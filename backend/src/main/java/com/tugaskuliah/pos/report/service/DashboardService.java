@@ -53,9 +53,8 @@ public class DashboardService {
                 alerts(startOfDay));
     }
     private DashboardResponse.SalesKpi salesKpi(OffsetDateTime start, OffsetDateTime end) {
-        Object[] row = saleReportRepository.salesKpi(start, end);
-        BigDecimal revenue = nvl(row[0]);
-        long txCount = row[1] instanceof Number n ? n.longValue() : 0L;
+        BigDecimal revenue = nvl(saleReportRepository.salesRevenue(start, end));
+        long txCount = saleReportRepository.salesTxCount(start, end);
         BigDecimal itemsSold = nvl(saleReportRepository.itemsSold(start, end));
         BigDecimal avg = txCount == 0 ? BigDecimal.ZERO
                 : revenue.divide(BigDecimal.valueOf(txCount), 2, RoundingMode.HALF_UP);

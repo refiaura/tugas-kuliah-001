@@ -20,11 +20,18 @@ public interface SaleReportRepository extends JpaRepository<Sale, Long> {
 
     /** {revenue, txCount} for completed sales in [start, end). */
     @Query("""
-            SELECT SUM(s.grandTotal), COUNT(s) FROM Sale s
+            SELECT SUM(s.grandTotal) FROM Sale s
             WHERE s.status = 'COMPLETED'
               AND s.completedAt >= :start AND s.completedAt < :end
             """)
-    Object[] salesKpi(@Param("start") OffsetDateTime start, @Param("end") OffsetDateTime end);
+    BigDecimal salesRevenue(@Param("start") OffsetDateTime start, @Param("end") OffsetDateTime end);
+
+    @Query("""
+            SELECT COUNT(s) FROM Sale s
+            WHERE s.status = 'COMPLETED'
+              AND s.completedAt >= :start AND s.completedAt < :end
+            """)
+    long salesTxCount(@Param("start") OffsetDateTime start, @Param("end") OffsetDateTime end);
 
     @Query("""
             SELECT SUM(i.qty) FROM SaleItem i

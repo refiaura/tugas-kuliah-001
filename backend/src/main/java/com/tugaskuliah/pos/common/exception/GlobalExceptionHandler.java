@@ -61,14 +61,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception ex) {
         log.error("Unexpected error", ex);
-        // TEMP DEBUG: include root cause to diagnose report 500s.
-        String detail = ex.toString();
-        Throwable c = ex.getCause();
-        if (c != null) {
-            detail += " | caused by: " + c;
-        }
-        return status(HttpStatus.INTERNAL_SERVER_ERROR,
-                ErrorCode.INTERNAL_ERROR.getDefaultMessage() + " [DEBUG] " + detail);
+        return status(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_ERROR.getDefaultMessage());
     }
 
     private String fieldMessage(FieldError e) {
