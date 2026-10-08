@@ -97,10 +97,16 @@ public class ReportService {
     }
 
     private static OffsetDateTime toStart(LocalDate date) {
-        return date == null ? null : date.atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime();
+        // Use sentinel instead of null: PostgreSQL cannot infer type of null parameters in "IS NULL" checks.
+        return date == null
+                ? OffsetDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
+                : date.atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime();
     }
 
     private static OffsetDateTime toEndExclusive(LocalDate date) {
-        return date == null ? null : date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime();
+        // Use sentinel instead of null (far future).
+        return date == null
+                ? OffsetDateTime.of(2100, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
+                : date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime();
     }
 }

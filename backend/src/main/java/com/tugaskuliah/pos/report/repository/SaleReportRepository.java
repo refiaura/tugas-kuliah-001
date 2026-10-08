@@ -80,8 +80,8 @@ public interface SaleReportRepository extends JpaRepository<Sale, Long> {
             LEFT JOIN s.cashier cashier
             LEFT JOIN s.customer cust
             WHERE s.status = :status
-              AND (:start IS NULL OR s.completedAt >= :start)
-              AND (:end IS NULL OR s.completedAt < :end)
+              AND s.completedAt >= :start
+              AND s.completedAt < :end
               AND (:cashierId IS NULL OR cashier.id = :cashierId)
               AND (:customerId IS NULL OR cust.id = :customerId)
               AND (:paymentMethodId IS NULL OR EXISTS (
@@ -108,16 +108,16 @@ public interface SaleReportRepository extends JpaRepository<Sale, Long> {
                 SUM(i.subtotal - (i.returnedQty * i.unitPrice)))
             FROM SaleItem i JOIN i.product p
             WHERE i.sale.status = 'COMPLETED'
-              AND (:start IS NULL OR i.sale.completedAt >= :start)
-              AND (:end IS NULL OR i.sale.completedAt < :end)
+              AND i.sale.completedAt >= :start
+              AND i.sale.completedAt < :end
             GROUP BY p.id, p.name, p.sku
             ORDER BY SUM(i.subtotal) DESC
             """,
             countQuery = """
             SELECT COUNT(DISTINCT p.id) FROM SaleItem i JOIN i.product p
             WHERE i.sale.status = 'COMPLETED'
-              AND (:start IS NULL OR i.sale.completedAt >= :start)
-              AND (:end IS NULL OR i.sale.completedAt < :end)
+              AND i.sale.completedAt >= :start
+              AND i.sale.completedAt < :end
             """)
     Page<ProductReportRow> findProductReport(@Param("start") OffsetDateTime start,
                                             @Param("end") OffsetDateTime end,
