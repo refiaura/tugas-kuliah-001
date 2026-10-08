@@ -14,7 +14,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import {
+  NativeStackNavigationProp,
+} from '@react-navigation/native-stack';
 import { useAuthStore } from '../../stores/authStore';
 import {
   listProducts,
@@ -25,13 +28,14 @@ import { AppStackParamList } from '../../app/navigation';
 import { Badge, Button, Card, EmptyState, ScreenHeader } from '../../components';
 import { colors, spacing, typography } from '../../theme';
 
-type Props = NativeStackScreenProps<AppStackParamList, 'ProductList'>;
+type Nav = NativeStackNavigationProp<AppStackParamList>;
 
 function formatRupiah(value: number): string {
   return 'Rp ' + Math.round(value).toLocaleString('id-ID');
 }
 
-export default function ProductListScreen({ navigation }: Props) {
+export default function ProductListScreen() {
+  const navigation = useNavigation<Nav>();
   const hasPermission = useAuthStore(s => s.hasPermission);
   const canCreate = hasPermission('product.create');
 

@@ -122,7 +122,7 @@ export default function PaymentScreen({ navigation, route }: Props) {
             { text: 'Batal', style: 'cancel' },
             {
               text: 'Buka Shift',
-              onPress: () => navigation.navigate('Shift'),
+              onPress: () => navigation.navigate('MainTabs', { screen: 'ShiftTab' }),
             },
           ],
         );

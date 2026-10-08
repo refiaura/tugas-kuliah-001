@@ -106,7 +106,7 @@ export default function ReceiptScreen({ navigation, route }: Props) {
         <Button
           title="Selesai — Kembali ke Kasir"
           size="lg"
-          onPress={() => navigation.navigate('Pos')}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'PosTab' })}
         />
       </View>
     </View>

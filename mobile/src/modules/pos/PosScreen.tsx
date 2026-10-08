@@ -14,7 +14,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import {
+  NativeStackNavigationProp,
+} from '@react-navigation/native-stack';
 import {
   listProducts,
   ProductResponse,
@@ -33,7 +36,7 @@ import { AppStackParamList } from '../../app/navigation';
 import { Button, Card, EmptyState } from '../../components';
 import { colors, radius, spacing, typography } from '../../theme';
 
-type Props = NativeStackScreenProps<AppStackParamList, 'Pos'>;
+type Nav = NativeStackNavigationProp<AppStackParamList>;
 
 function useDebounced(value: string, delayMs: number): string {
   const [debounced, setDebounced] = useState(value);
@@ -44,7 +47,8 @@ function useDebounced(value: string, delayMs: number): string {
   return debounced;
 }
 
-export default function PosScreen({ navigation }: Props) {
+export default function PosScreen() {
+  const navigation = useNavigation<Nav>();
   const items = useCartStore(s => s.items);
   const discountTotal = useCartStore(s => s.discountTotal);
   const addItem = useCartStore(s => s.addItem);

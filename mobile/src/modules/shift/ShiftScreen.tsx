@@ -16,7 +16,10 @@ import {
   Text,
   View,
 } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import {
+  NativeStackNavigationProp,
+} from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../app/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useShiftStore } from '../../stores/shiftStore';
@@ -30,7 +33,7 @@ import { formatRupiah } from '../../stores/cartStore';
 import { Badge, Button, Card, EmptyState, Input, ScreenHeader } from '../../components';
 import { colors, radius, spacing, typography } from '../../theme';
 
-type Props = NativeStackScreenProps<AppStackParamList, 'Shift'>;
+type Nav = NativeStackNavigationProp<AppStackParamList>;
 
 function parseAmount(text: string): number | null {
   const n = Number(text.replace(/[^0-9]/g, ''));
@@ -51,7 +54,8 @@ function formatDate(iso: string | null): string {
   }
 }
 
-export default function ShiftScreen({ navigation }: Props) {
+export default function ShiftScreen() {
+  const navigation = useNavigation<Nav>();
   const hasPermission = useAuthStore(s => s.hasPermission);
   const currentShift = useShiftStore(s => s.currentShift);
   const shiftLoading = useShiftStore(s => s.loading);

@@ -1,11 +1,10 @@
 /**
- * Root navigation.
+ * Root navigation — modern minimalist with bottom tabs.
  *
- * - While the auth session is bootstrapping: simple splash/loading screen.
+ * - While the auth session is bootstrapping: splash/loading.
  * - Not logged in: AuthStack (Login).
- * - Logged in: AppStack (Home + module placeholders). The home menu is
- *   filtered by the user's permissions; every module screen is a placeholder
- *   until its milestone lands.
+ * - Logged in: AppStack → MainTabs (bottom tabs) + detail screens.
+ *   Tabs are permission-filtered; "Menu" tab holds everything else.
  */
 import React from 'react';
 import {
@@ -17,12 +16,25 @@ import {
   Text,
   View,
 } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigation, NavigatorScreenParams } from '@react-navigation/native';
 import {
   createNativeStackNavigator,
+  NativeStackNavigationProp,
   NativeStackScreenProps,
 } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {
+  BarChart3,
+  Clock,
+  LayoutGrid,
+  Package,
+  ShoppingCart,
+  ChevronRight,
+  LogOut,
+} from 'lucide-react-native';
 import { useAuthStore } from '../stores/authStore';
+import { colors, radius, spacing, typography } from '../theme';
+import { Card, EmptyState, ScreenHeader } from '../components';
 import LoginScreen from '../modules/auth/LoginScreen';
 import ProductListScreen from '../modules/products/ProductListScreen';
 import ProductFormScreen from '../modules/products/ProductFormScreen';
@@ -61,13 +73,10 @@ type AuthStackParamList = {
 };
 
 export type AppStackParamList = {
-  Home: undefined;
-  ProductList: undefined;
+  MainTabs: NavigatorScreenParams<TabParamList> | undefined;
   ProductForm: { productId?: number };
-  Pos: undefined;
   Payment: { resumeSaleId?: number };
   Receipt: { sale: SaleResponse };
-  Shift: undefined;
   CloseShift: undefined;
   Stock: undefined;
   StockOpname: undefined;
@@ -86,11 +95,18 @@ export type AppStackParamList = {
   ReturnRequest: { saleId: number };
   ApprovalInbox: undefined;
   AuditLog: undefined;
-  Dashboard: undefined;
   Reports: undefined;
   ReportViewer: { kind: ReportKind; title: string };
   Notifications: undefined;
   ModulePlaceholder: { title: string };
+};
+
+export type TabParamList = {
+  PosTab: undefined;
+  ProductTab: undefined;
+  ShiftTab: undefined;
+  DashboardTab: undefined;
+  MenuTab: undefined;
 };
 
 type PlaceholderProps = NativeStackScreenProps<
@@ -98,64 +114,63 @@ type PlaceholderProps = NativeStackScreenProps<
   'ModulePlaceholder'
 >;
 
-const AuthStack = createNativeStackNavigator<AuthStackParamList>();
-const AppStack = createNativeStackNavigator<AppStackParamList>();
-
-/* ------------------------------ menu definition -------------------------- */
+/* --------------------------------- menu ----------------------------------- */
 
 interface MenuItem {
   key: string;
   title: string;
+  subtitle: string;
   permission: string;
-  /** Stack route to navigate to (defaults to ModulePlaceholder). */
-  route?:
-    | 'ProductList'
-    | 'Pos'
-    | 'Shift'
+  icon: React.ReactNode;
+  route:
     | 'Stock'
     | 'Purchase'
     | 'Control'
-    | 'Dashboard'
     | 'Reports'
     | 'Notifications';
 }
 
 const MENU_ITEMS: MenuItem[] = [
-  { key: 'pos', title: 'Kasir / POS', permission: 'sales.create', route: 'Pos' },
-  {
-    key: 'shift',
-    title: 'Shift Kasir',
-    permission: 'shift.open',
-    route: 'Shift',
-  },
   {
     key: 'stock',
     title: 'Inventaris',
+    subtitle: 'Stok, opname, transfer',
     permission: 'stock.view',
+    icon: <Package size={22} color={colors.primary} />,
     route: 'Stock',
   },
   {
     key: 'purchase',
     title: 'Pembelian',
+    subtitle: 'PO, terima barang, retur',
     permission: 'purchase.view',
+    icon: <ShoppingCart size={22} color={colors.primary} />,
     route: 'Purchase',
   },
   {
     key: 'control',
     title: 'Kontrol',
+    subtitle: 'Transaksi, approval, audit',
     permission: 'sales.view',
+    icon: <LayoutGrid size={22} color={colors.primary} />,
     route: 'Control',
   },
   {
-    key: 'products',
-    title: 'Produk',
-    permission: 'product.view',
-    route: 'ProductList',
+    key: 'reports',
+    title: 'Laporan',
+    subtitle: 'Penjualan, stok, kas',
+    permission: 'report.sales',
+    icon: <BarChart3 size={22} color={colors.primary} />,
+    route: 'Reports',
   },
-  { key: 'users', title: 'Pengguna', permission: 'user.view' },
-  { key: 'dashboard', title: 'Dashboard', permission: 'report.sales', route: 'Dashboard' },
-  { key: 'reports', title: 'Laporan', permission: 'report.sales', route: 'Reports' },
-  { key: 'notifications', title: 'Notifikasi', permission: 'notification.view', route: 'Notifications' },
+  {
+    key: 'notifications',
+    title: 'Notifikasi',
+    subtitle: 'Alert & pengumuman',
+    permission: 'notification.view',
+    icon: <Clock size={22} color={colors.primary} />,
+    route: 'Notifications',
+  },
 ];
 
 /* --------------------------------- screens -------------------------------- */
@@ -163,15 +178,23 @@ const MENU_ITEMS: MenuItem[] = [
 function SplashScreen() {
   return (
     <View style={styles.center}>
-      <ActivityIndicator size="large" />
+      <ActivityIndicator size="large" color={colors.primary} />
       <Text style={styles.splashText}>Memuat…</Text>
     </View>
   );
 }
 
-function LogoutButton() {
+function MenuScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const user = useAuthStore(s => s.user);
   const logout = useAuthStore(s => s.logout);
-  const onPress = () => {
+  const hasPermission = useAuthStore(s => s.hasPermission);
+  const visibleMenu = MENU_ITEMS.filter(item =>
+    hasPermission(item.permission),
+  );
+
+  const onLogout = () => {
     Alert.alert('Keluar', 'Yakin ingin keluar dari aplikasi?', [
       { text: 'Batal', style: 'cancel' },
       {
@@ -183,60 +206,51 @@ function LogoutButton() {
       },
     ]);
   };
-  return (
-    <Pressable onPress={onPress} style={styles.logoutButton} hitSlop={8}>
-      <Text style={styles.logoutText}>Keluar</Text>
-    </Pressable>
-  );
-}
 
-function HomeScreen({
-  navigation,
-}: NativeStackScreenProps<AppStackParamList, 'Home'>) {
-  const user = useAuthStore(s => s.user);
-  const hasPermission = useAuthStore(s => s.hasPermission);
-  const visibleMenu = MENU_ITEMS.filter(item =>
-    hasPermission(item.permission),
-  );
+  const goTo = (route: MenuItem['route']) => {
+    navigation.navigate(route);
+  };
 
   return (
     <View style={styles.container}>
-      <View style={styles.profileCard}>
+      <ScreenHeader title="Menu" subtitle={`@${user?.username ?? '-'}`} />
+      <Card style={styles.profileCard}>
         <Text style={styles.profileName}>{user?.fullName ?? '-'}</Text>
         <Text style={styles.profileMeta}>
-          @{user?.username} · {(user?.roles ?? []).join(', ')}
+          {(user?.roles ?? []).join(', ')}
         </Text>
-      </View>
+      </Card>
 
       {visibleMenu.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={styles.emptyText}>
-            Tidak ada menu yang tersedia untuk akun ini.
-          </Text>
-        </View>
+        <EmptyState
+          title="Tidak ada menu"
+          message="Tidak ada menu yang tersedia untuk akun ini."
+          icon="🔒"
+        />
       ) : (
         <FlatList
           data={visibleMenu}
           keyExtractor={item => item.key}
           contentContainerStyle={styles.menuList}
           renderItem={({ item }) => (
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => {
-                if (item.route) {
-                  navigation.navigate(item.route);
-                } else {
-                  navigation.navigate('ModulePlaceholder', {
-                    title: item.title,
-                  });
-                }
-              }}>
-              <Text style={styles.menuTitle}>{item.title}</Text>
-              <Text style={styles.menuChevron}>›</Text>
+            <Pressable onPress={() => goTo(item.route)}>
+              <Card style={styles.menuItem}>
+                <View style={styles.menuIcon}>{item.icon}</View>
+                <View style={styles.menuText}>
+                  <Text style={styles.menuTitle}>{item.title}</Text>
+                  <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                </View>
+                <ChevronRight size={20} color={colors.textMuted} />
+              </Card>
             </Pressable>
           )}
         />
       )}
+
+      <Pressable onPress={onLogout} style={styles.logoutRow}>
+        <LogOut size={20} color={colors.danger[600]} />
+        <Text style={styles.logoutText}>Keluar</Text>
+      </Pressable>
     </View>
   );
 }
@@ -244,15 +258,103 @@ function HomeScreen({
 function ModulePlaceholderScreen({ route }: PlaceholderProps) {
   return (
     <View style={styles.center}>
-      <Text style={styles.placeholderTitle}>{route.params.title}</Text>
-      <Text style={styles.placeholderText}>
-        Modul {route.params.title} — segera hadir di milestone berikutnya.
-      </Text>
+      <EmptyState
+        title={route.params.title}
+        message={`Modul ${route.params.title} — segera hadir.`}
+      />
     </View>
   );
 }
 
+/* --------------------------------- tabs ----------------------------------- */
+
+const Tab = createBottomTabNavigator<TabParamList>();
+
+function MainTabs() {
+  const hasPermission = useAuthStore(s => s.hasPermission);
+
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: {
+          borderTopColor: colors.border,
+          paddingBottom: spacing.sm,
+          paddingTop: spacing.sm,
+          height: 64,
+        },
+        tabBarLabelStyle: {
+          ...typography.tiny,
+        },
+      }}>
+      {hasPermission('sales.create') && (
+        <Tab.Screen
+          name="PosTab"
+          component={PosScreen}
+          options={{
+            title: 'Kasir',
+            tabBarIcon: ({ color, size }) => (
+              <ShoppingCart size={size} color={color} />
+            ),
+          }}
+        />
+      )}
+      {hasPermission('product.view') && (
+        <Tab.Screen
+          name="ProductTab"
+          component={ProductListScreen}
+          options={{
+            title: 'Produk',
+            tabBarIcon: ({ color, size }) => (
+              <Package size={size} color={color} />
+            ),
+          }}
+        />
+      )}
+      {hasPermission('shift.open') && (
+        <Tab.Screen
+          name="ShiftTab"
+          component={ShiftScreen}
+          options={{
+            title: 'Shift',
+            tabBarIcon: ({ color, size }) => (
+              <Clock size={size} color={color} />
+            ),
+          }}
+        />
+      )}
+      {hasPermission('report.sales') && (
+        <Tab.Screen
+          name="DashboardTab"
+          component={DashboardScreen}
+          options={{
+            title: 'Laporan',
+            tabBarIcon: ({ color, size }) => (
+              <BarChart3 size={size} color={color} />
+            ),
+          }}
+        />
+      )}
+      <Tab.Screen
+        name="MenuTab"
+        component={MenuScreen}
+        options={{
+          title: 'Menu',
+          tabBarIcon: ({ color, size }) => (
+            <LayoutGrid size={size} color={color} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+}
+
 /* --------------------------------- stacks --------------------------------- */
+
+const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+const AppStack = createNativeStackNavigator<AppStackParamList>();
 
 function AuthNavigator() {
   return (
@@ -266,29 +368,17 @@ function AppNavigator() {
   return (
     <AppStack.Navigator>
       <AppStack.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          title: 'Kasir POS',
-          headerRight: () => <LogoutButton />,
-        }}
+        name="MainTabs"
+        component={MainTabs}
+        options={{ headerShown: false }}
       />
-      <AppStack.Screen
-        name="ProductList"
-        component={ProductListScreen}
-        options={{ title: 'Produk' }}
-      />
+      {/* Detail screens pushed above tabs */}
       <AppStack.Screen
         name="ProductForm"
         component={ProductFormScreen}
         options={({ route }) => ({
           title: route.params.productId !== undefined ? 'Ubah Produk' : 'Tambah Produk',
         })}
-      />
-      <AppStack.Screen
-        name="Pos"
-        component={PosScreen}
-        options={{ title: 'Kasir' }}
       />
       <AppStack.Screen
         name="Payment"
@@ -299,11 +389,6 @@ function AppNavigator() {
         name="Receipt"
         component={ReceiptScreen}
         options={{ title: 'Struk', headerBackVisible: false }}
-      />
-      <AppStack.Screen
-        name="Shift"
-        component={ShiftScreen}
-        options={{ title: 'Shift Kasir' }}
       />
       <AppStack.Screen
         name="CloseShift"
@@ -323,17 +408,17 @@ function AppNavigator() {
       <AppStack.Screen
         name="StockAdjustment"
         component={StockAdjustmentScreen}
-        options={{ title: 'Stock Adjustment' }}
+        options={{ title: 'Penyesuaian Stok' }}
       />
       <AppStack.Screen
         name="StockTransfer"
         component={StockTransferScreen}
-        options={{ title: 'Stock Transfer' }}
+        options={{ title: 'Transfer Stok' }}
       />
       <AppStack.Screen
         name="StockHistory"
         component={StockHistoryScreen}
-        options={{ title: 'Riwayat Pergerakan Stok' }}
+        options={{ title: 'Riwayat Stok' }}
       />
       <AppStack.Screen
         name="Purchase"
@@ -348,7 +433,7 @@ function AppNavigator() {
       <AppStack.Screen
         name="PurchaseOrderForm"
         component={PurchaseOrderFormScreen}
-        options={{ title: 'Buat Purchase Order' }}
+        options={{ title: 'Buat PO' }}
       />
       <AppStack.Screen
         name="PurchaseOrderDetail"
@@ -388,17 +473,12 @@ function AppNavigator() {
       <AppStack.Screen
         name="ApprovalInbox"
         component={ApprovalInboxScreen}
-        options={{ title: 'Approval Inbox' }}
+        options={{ title: 'Approval' }}
       />
       <AppStack.Screen
         name="AuditLog"
         component={AuditLogScreen}
         options={{ title: 'Audit Log' }}
-      />
-      <AppStack.Screen
-        name="Dashboard"
-        component={DashboardScreen}
-        options={{ title: 'Dashboard' }}
       />
       <AppStack.Screen
         name="Reports"
@@ -446,86 +526,71 @@ export function RootNavigator() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: spacing.xxl,
   },
   splashText: {
-    marginTop: 12,
-    color: '#666',
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
   },
   profileCard: {
-    backgroundColor: '#fff',
-    margin: 16,
-    marginBottom: 8,
-    borderRadius: 12,
-    padding: 16,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.md,
   },
   profileName: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...typography.title,
+    color: colors.text,
   },
   profileMeta: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 4,
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
   },
   menuList: {
-    padding: 16,
-    paddingTop: 8,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
   },
   menuItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    marginBottom: spacing.md,
+  },
+  menuIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  menuText: {
+    flex: 1,
   },
   menuTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.text,
   },
-  menuChevron: {
-    fontSize: 20,
-    color: '#999',
+  menuSubtitle: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
   },
-  emptyText: {
-    color: '#666',
-    textAlign: 'center',
-  },
-  placeholderTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  placeholderText: {
-    color: '#666',
-    textAlign: 'center',
-  },
-  logoutButton: {
-    marginRight: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  logoutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.lg,
+    gap: spacing.sm,
   },
   logoutText: {
-    color: '#c62828',
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.danger[600],
   },
 });
