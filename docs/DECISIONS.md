@@ -10,9 +10,10 @@ Format: WHAT / WHY / IMPACT.
 - **Why:** Satu repo tugas; backend Spring Boot butuh lokasi sendiri tanpa rewrite.
 - **Impact:** Path berubah; CI/dokumen mengacu ke `mobile/`.
 
-## D-002 — Backend: Spring Boot 3 + Java 21 + Maven + Flyway
+## D-002 — Backend: Spring Boot 4.1 + Java 21 + Maven + Flyway
 - **What:** Stack backend sesuai PRD §1; Maven sebagai build tool.
 - **Why:** Maven paling umum di kurikulum & tutorial; Flyway wajib PRD.
+- **Catatan versi (2026-10-08):** Spring Initializr saat ini hanya menyediakan Boot 4.x (minimum 4.0.0); project memakai **Spring Boot 4.1.1**. Konsekuensi yang ditemukan: `AutoConfigureMockMvc` tidak lagi tersedia (test memakai `MockMvcBuilders` + `springSecurity()` manual). Selain itu API yang dipakai kompatibel.
 - **Impact:** Perlu JDK 21 di semua environment dev.
 
 ## D-003 — Auth: JWT (access 15 mnt + refresh 7 hari, rotation)

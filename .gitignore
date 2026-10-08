@@ -1,0 +1,23 @@
+# Build output
+backend/target/
+mobile/android/app/build/
+mobile/ios/build/
+mobile/ios/Pods/
+
+# Dependencies
+mobile/node_modules/
+
+# Env & secrets (never commit)
+.env
+*.env
+application-local.yml
+application-prod.yml
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Logs
+*.log

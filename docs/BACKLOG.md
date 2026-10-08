@@ -8,17 +8,18 @@ auth → business rule → audit → test → frontend → states → integrasi 
 
 - [x] `PROJECT_ASSESSMENT.md`, `ARCHITECTURE.md`, `GAP_ANALYSIS.md`
 - [x] `DEPENDENCY_MAP.md`, `BACKLOG.md`, `DECISIONS.md`
-- [ ] Setup `backend/` (Maven, Spring Boot 3, Java 21) + `docker-compose.yml` (PostgreSQL 16)
-- [ ] Flyway baseline + `common`: ApiResponse, GlobalExceptionHandler, logging, health check
+- [x] Setup `backend/` (Maven, Spring Boot 4.1, Java 21) — Initializr kini 4.x, lihat D-002
+- [x] Flyway baseline + `common`: ApiResponse, GlobalExceptionHandler, logging, health check
 - [ ] Restruktur monorepo `mobile/` (done) + root README
 
-## MILESTONE 1 — Auth & RBAC
+## MILESTONE 1 — Auth & RBAC ✅ (2026-10-08, lihat `MILESTONE_1_REPORT.md`)
 
-- [ ] Migration: users, roles, permissions, role_permissions (+seed 7 role & permission)
-- [ ] BCrypt, JWT access+refresh, login/logout/refresh/me
-- [ ] `@PreAuthorize` permission checks; user aktif/nonaktif
-- [ ] Test: login valid/invalid, expired token, unauthorized, inactive user
-- [ ] Mobile: login screen, authStore, token refresh interceptor, menu by permission
+- [x] Migration: users, roles, permissions, role_permissions (+seed 7 role & 39 permission)
+- [x] BCrypt, JWT access+refresh, login/logout/refresh/me
+- [x] `@PreAuthorize` permission checks; user aktif/nonaktif
+- [x] Test: 19/19 lolos (login valid/invalid, refresh rotation+reuse, logout, RBAC 403, inactive user)
+- [x] Mobile: login screen, authStore, token refresh interceptor, menu by permission
+- [ ] Audit log login/logout & perubahan user/role → Milestone 7
 
 ## MILESTONE 2 — Master Data
 

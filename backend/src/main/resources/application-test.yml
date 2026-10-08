@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/pos_test?sslmode=disable
+    username: pos
+    password: pos
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+
+jwt:
+  secret: test-secret-key-min-32-bytes-long-for-tests-only-0123456789
+  access-expiration-ms: 900000
+  refresh-expiration-ms: 604800000
+
+logging:
+  level:
+    com.tugaskuliah.pos: WARN
+    org.hibernate.SQL: WARN
