@@ -23,7 +23,8 @@ import org.springframework.web.context.WebApplicationContext;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-import static org.hamcrest.Matchers.closeTo;
+import static com.tugaskuliah.pos.TestMatchers.closeToNumber;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -145,12 +146,12 @@ class ReportIntegrationTest {
         mockMvc.perform(get("/api/v1/dashboard")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.sales.revenueToday", closeTo(30000, 0.01)))
+                .andExpect(jsonPath("$.data.sales.revenueToday", closeToNumber(30000, 0.01)))
                 .andExpect(jsonPath("$.data.sales.transactionCount").value(1))
-                .andExpect(jsonPath("$.data.sales.itemsSold", closeTo(2, 0.01)))
-                .andExpect(jsonPath("$.data.sales.averageTransactionValue", closeTo(30000, 0.01)))
+                .andExpect(jsonPath("$.data.sales.itemsSold", closeToNumber(2, 0.01)))
+                .andExpect(jsonPath("$.data.sales.averageTransactionValue", closeToNumber(30000, 0.01)))
                 // gross profit = 30000 - 2*9000 = 12000
-                .andExpect(jsonPath("$.data.sales.grossProfitToday", closeTo(12000, 0.01)))
+                .andExpect(jsonPath("$.data.sales.grossProfitToday", closeToNumber(12000, 0.01)))
                 .andExpect(jsonPath("$.data.inventory.totalActiveSku", greaterThanOrEqualTo(1)))
                 .andExpect(jsonPath("$.data.cash.activeShiftCount").value(1));
     }
@@ -181,7 +182,7 @@ class ReportIntegrationTest {
                         .param("startDate", today).param("endDate", today))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pagination.totalElements").value(1))
-                .andExpect(jsonPath("$.data[0].grandTotal", closeTo(15000, 0.01)))
+                .andExpect(jsonPath("$.data[0].grandTotal", closeToNumber(15000, 0.01)))
                 .andExpect(jsonPath("$.data[0].status").value("COMPLETED"));
 
         // future range -> empty
@@ -203,9 +204,9 @@ class ReportIntegrationTest {
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].sku").value("PRD-001"))
-                .andExpect(jsonPath("$.data[0].qtySold", closeTo(3, 0.01)))
-                .andExpect(jsonPath("$.data[0].revenue", closeTo(45000, 0.01)))
-                .andExpect(jsonPath("$.data[0].netSales", closeTo(45000, 0.01)));
+                .andExpect(jsonPath("$.data[0].qtySold", closeToNumber(3, 0.01)))
+                .andExpect(jsonPath("$.data[0].revenue", closeToNumber(45000, 0.01)))
+                .andExpect(jsonPath("$.data[0].netSales", closeToNumber(45000, 0.01)));
     }
 
     @Test

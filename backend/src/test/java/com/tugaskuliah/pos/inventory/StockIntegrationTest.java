@@ -22,7 +22,7 @@ import org.springframework.web.context.WebApplicationContext;
 import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.hamcrest.Matchers.closeTo;
+import static com.tugaskuliah.pos.TestMatchers.closeToNumber;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -99,7 +99,7 @@ class StockIntegrationTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].productId").value(p.getId().intValue()))
-                .andExpect(jsonPath("$.data[0].qty", closeTo(12.0, 0.001)));
+                .andExpect(jsonPath("$.data[0].qty", closeToNumber(12.0, 0.001)));
     }
 
     @Test
@@ -115,7 +115,7 @@ class StockIntegrationTest {
                                 + ",\"countedQty\":10}]}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.docNo").exists())
-                .andExpect(jsonPath("$.data.lines[0].differenceQty", closeTo(0.0, 0.001)));
+                .andExpect(jsonPath("$.data.lines[0].differenceQty", closeToNumber(0.0, 0.001)));
 
         assertEquals(0, stockOf(p.getId()).compareTo(new BigDecimal("10")));
         assertEquals(0, movementCount(p.getId())); // no diff → no ledger entries
@@ -133,8 +133,8 @@ class StockIntegrationTest {
                         .content("{\"location\":\"Gudang\",\"lines\":[{\"productId\":" + p.getId()
                                 + ",\"countedQty\":7}]}"))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.lines[0].expectedQty", closeTo(10.0, 0.001)))
-                .andExpect(jsonPath("$.data.lines[0].differenceQty", closeTo(-3.0, 0.001)));
+                .andExpect(jsonPath("$.data.lines[0].expectedQty", closeToNumber(10.0, 0.001)))
+                .andExpect(jsonPath("$.data.lines[0].differenceQty", closeToNumber(-3.0, 0.001)));
 
         assertEquals(0, stockOf(p.getId()).compareTo(new BigDecimal("7")));
         assertEquals(1, movementCount(p.getId()));
@@ -144,7 +144,7 @@ class StockIntegrationTest {
                         .param("productId", p.getId().toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].movementType").value("STOCK_OPNAME"))
-                .andExpect(jsonPath("$.data[0].qtyChange", closeTo(-3.0, 0.001)));
+                .andExpect(jsonPath("$.data[0].qtyChange", closeToNumber(-3.0, 0.001)));
     }
 
     @Test
@@ -205,9 +205,9 @@ class StockIntegrationTest {
                         .param("productId", p.getId().toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[?(@.movementType=='TRANSFER_OUT')].qtyChange",
-                        hasItem(closeTo(-3.0, 0.001))))
+                        hasItem(closeToNumber(-3.0, 0.001))))
                 .andExpect(jsonPath("$.data[?(@.movementType=='TRANSFER_IN')].qtyChange",
-                        hasItem(closeTo(3.0, 0.001))));
+                        hasItem(closeToNumber(3.0, 0.001))));
     }
 
     @Test
@@ -246,6 +246,6 @@ class StockIntegrationTest {
                         .param("productId", p.getId().toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].movementType").value("RECEIVE"))
-                .andExpect(jsonPath("$.data[0].qtyChange", closeTo(25.0, 0.001)));
+                .andExpect(jsonPath("$.data[0].qtyChange", closeToNumber(25.0, 0.001)));
     }
 }

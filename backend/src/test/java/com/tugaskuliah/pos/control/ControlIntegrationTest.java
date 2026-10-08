@@ -22,7 +22,8 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.math.BigDecimal;
 
-import static org.hamcrest.Matchers.closeTo;
+import static com.tugaskuliah.pos.TestMatchers.closeToNumber;
+import static org.hamcrest.Matchers.hasItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -249,7 +250,7 @@ class ControlIntegrationTest {
                         .param("productId", p.getId().toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].movementType").value("VOID"))
-                .andExpect(jsonPath("$.data[0].qtyChange", closeTo(3.0, 0.001)));
+                .andExpect(jsonPath("$.data[0].qtyChange", closeToNumber(3.0, 0.001)));
         // audit recorded
         assertTrue(auditActionExists(admin, "SALE", "SALE_VOID_EXECUTED"));
     }
@@ -280,7 +281,7 @@ class ControlIntegrationTest {
                         .param("productId", p.getId().toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].movementType").value("SALE_RETURN"))
-                .andExpect(jsonPath("$.data[0].qtyChange", closeTo(1.0, 0.001)));
+                .andExpect(jsonPath("$.data[0].qtyChange", closeToNumber(1.0, 0.001)));
         // refund 1 x 15000 posted as REFUND cash movement on the approver's shift
         MvcResult retRes = mockMvc.perform(get("/api/v1/sales/returns/" + ret[0])
                         .header("Authorization", "Bearer " + admin))
@@ -291,7 +292,7 @@ class ControlIntegrationTest {
         mockMvc.perform(get("/api/v1/shifts/" + shiftId + "/summary")
                         .header("Authorization", "Bearer " + admin))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.cashOut", closeTo(15000.0, 0.001)));
+                .andExpect(jsonPath("$.data.cashOut", closeToNumber(15000.0, 0.001)));
         assertTrue(auditActionExists(admin, "SALE_RETURN", "SALE_RETURN_EXECUTED"));
     }
 

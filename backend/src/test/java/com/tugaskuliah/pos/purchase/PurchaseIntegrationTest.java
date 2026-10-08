@@ -23,7 +23,8 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.math.BigDecimal;
 
-import static org.hamcrest.Matchers.closeTo;
+import static com.tugaskuliah.pos.TestMatchers.closeToNumber;
+import static org.hamcrest.Matchers.hasItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -194,9 +195,9 @@ class PurchaseIntegrationTest {
                         .param("productId", p.getId().toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].movementType").value("PURCHASE"))
-                .andExpect(jsonPath("$.data[0].qtyChange", closeTo(60.0, 0.001)))
+                .andExpect(jsonPath("$.data[0].qtyChange", closeToNumber(60.0, 0.001)))
                 .andExpect(jsonPath("$.data[1].movementType").value("PURCHASE"))
-                .andExpect(jsonPath("$.data[1].qtyChange", closeTo(40.0, 0.001)));
+                .andExpect(jsonPath("$.data[1].qtyChange", closeToNumber(40.0, 0.001)));
     }
 
     @Test
@@ -293,7 +294,7 @@ class PurchaseIntegrationTest {
                                 + "\"lines\":[{\"poLineId\":" + ids[1] + ",\"qty\":20}]}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.docNo").exists())
-                .andExpect(jsonPath("$.data.supplierCredit", closeTo(180000.0, 0.01)));
+                .andExpect(jsonPath("$.data.supplierCredit", closeToNumber(180000.0, 0.01)));
 
         assertEquals(0, stockOf(p.getId()).compareTo(new BigDecimal("80")));
         mockMvc.perform(get("/api/v1/stock/movements")
@@ -301,7 +302,7 @@ class PurchaseIntegrationTest {
                         .param("productId", p.getId().toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].movementType").value("PURCHASE_RETURN"))
-                .andExpect(jsonPath("$.data[0].qtyChange", closeTo(-20.0, 0.001)));
+                .andExpect(jsonPath("$.data[0].qtyChange", closeToNumber(-20.0, 0.001)));
     }
 
     @Test

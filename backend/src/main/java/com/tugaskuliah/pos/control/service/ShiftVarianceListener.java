@@ -3,9 +3,8 @@ package com.tugaskuliah.pos.control.service;
 import com.tugaskuliah.pos.control.entity.Approval;
 import com.tugaskuliah.pos.control.event.ShiftVarianceEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -22,10 +21,10 @@ public class ShiftVarianceListener {
     private final ApprovalService approvalService;
     private final AuditService auditService;
 
-    // BEFORE_COMMIT: the approval is part of the same unit of work — if the
-    // close rolls back, the approval rolls back too. Also keeps this testable
-    // under @Transactional integration tests.
-    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
+    // Regular @EventListener (not BEFORE_COMMIT): runs in the same transaction as
+    // the publisher, so rollback still rolls back the approval. BEFORE_COMMIT
+    // breaks @Transactional integration tests (they never commit).
+    @EventListener
     public void onShiftVariance(ShiftVarianceEvent event) {
         String reason = "Selisih kas shift #" + event.shiftId() + ": expected "
                 + event.expectedCash() + ", aktual " + event.actualCash()
