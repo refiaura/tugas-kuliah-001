@@ -36,6 +36,12 @@ import StockOpnameScreen from '../modules/stock/StockOpnameScreen';
 import StockAdjustmentScreen from '../modules/stock/StockAdjustmentScreen';
 import StockTransferScreen from '../modules/stock/StockTransferScreen';
 import StockHistoryScreen from '../modules/stock/StockHistoryScreen';
+import PurchaseScreen from '../modules/purchase/PurchaseScreen';
+import PurchaseOrderListScreen from '../modules/purchase/PurchaseOrderListScreen';
+import PurchaseOrderFormScreen from '../modules/purchase/PurchaseOrderFormScreen';
+import PurchaseOrderDetailScreen from '../modules/purchase/PurchaseOrderDetailScreen';
+import GoodsReceiptScreen from '../modules/purchase/GoodsReceiptScreen';
+import PurchaseReturnScreen from '../modules/purchase/PurchaseReturnScreen';
 import { SaleResponse } from '../services/saleApi';
 
 /* ---------------------------------- types --------------------------------- */
@@ -58,6 +64,12 @@ export type AppStackParamList = {
   StockAdjustment: undefined;
   StockTransfer: undefined;
   StockHistory: undefined;
+  Purchase: undefined;
+  PurchaseOrderList: undefined;
+  PurchaseOrderForm: undefined;
+  PurchaseOrderDetail: { poId: number };
+  GoodsReceipt: { poId?: number };
+  PurchaseReturn: { poId?: number };
   ModulePlaceholder: { title: string };
 };
 
@@ -80,7 +92,8 @@ interface MenuItem {
     | 'ProductList'
     | 'Pos'
     | 'Shift'
-    | 'Stock';
+    | 'Stock'
+    | 'Purchase';
 }
 
 const MENU_ITEMS: MenuItem[] = [
@@ -96,6 +109,12 @@ const MENU_ITEMS: MenuItem[] = [
     title: 'Inventaris',
     permission: 'stock.view',
     route: 'Stock',
+  },
+  {
+    key: 'purchase',
+    title: 'Pembelian',
+    permission: 'purchase.view',
+    route: 'Purchase',
   },
   {
     key: 'products',
@@ -283,6 +302,36 @@ function AppNavigator() {
         name="StockHistory"
         component={StockHistoryScreen}
         options={{ title: 'Riwayat Pergerakan Stok' }}
+      />
+      <AppStack.Screen
+        name="Purchase"
+        component={PurchaseScreen}
+        options={{ title: 'Pembelian' }}
+      />
+      <AppStack.Screen
+        name="PurchaseOrderList"
+        component={PurchaseOrderListScreen}
+        options={{ title: 'Purchase Order' }}
+      />
+      <AppStack.Screen
+        name="PurchaseOrderForm"
+        component={PurchaseOrderFormScreen}
+        options={{ title: 'Buat Purchase Order' }}
+      />
+      <AppStack.Screen
+        name="PurchaseOrderDetail"
+        component={PurchaseOrderDetailScreen}
+        options={{ title: 'Detail PO' }}
+      />
+      <AppStack.Screen
+        name="GoodsReceipt"
+        component={GoodsReceiptScreen}
+        options={{ title: 'Terima Barang' }}
+      />
+      <AppStack.Screen
+        name="PurchaseReturn"
+        component={PurchaseReturnScreen}
+        options={{ title: 'Retur Pembelian' }}
       />
       <AppStack.Screen
         name="ModulePlaceholder"

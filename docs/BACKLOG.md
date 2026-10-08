@@ -58,12 +58,12 @@ auth → business rule → audit → test → frontend → states → integrasi 
 - [ ] Test: purchase in, sale out, return in, adjustment, opname diff, negative prevention
 - [ ] Mobile: stock list, movement history, adjustment, opname
 
-## MILESTONE 6 — Purchase
+## MILESTONE 6 — Purchase ✅ (2026-10-08, lihat `MILESTONE_6_REPORT.md`)
 
-- [ ] `purchases` PO lifecycle (DRAFT→RECEIVED); approval; **PO tidak tambah stok**
-- [ ] `goods_receipts` parsial → movement PURCHASE; purchase return (Should Have)
-- [ ] Test: PO approve flow, partial receipt, return stock out
-- [ ] Mobile: PO list/form, goods receipt
+- [x] `purchases` PO lifecycle (DRAFT→RECEIVED); approval + anti-self-approve; **PO tidak tambah stok**
+- [x] `goods_receipts` parsial → movement PURCHASE; purchase return (stock out + supplier_credit)
+- [x] Test: PO approve flow, partial receipt, return stock out (PurchaseIntegrationTest, 8 test)
+- [x] Mobile: PO list/form, goods receipt, purchase return
 
 ## MILESTONE 7 — Control
 
