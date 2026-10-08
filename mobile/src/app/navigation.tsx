@@ -26,6 +26,10 @@ import { useAuthStore } from '../stores/authStore';
 import LoginScreen from '../modules/auth/LoginScreen';
 import ProductListScreen from '../modules/products/ProductListScreen';
 import ProductFormScreen from '../modules/products/ProductFormScreen';
+import PosScreen from '../modules/pos/PosScreen';
+import PaymentScreen from '../modules/pos/PaymentScreen';
+import ReceiptScreen from '../modules/pos/ReceiptScreen';
+import { SaleResponse } from '../services/saleApi';
 
 /* ---------------------------------- types --------------------------------- */
 
@@ -37,6 +41,9 @@ export type AppStackParamList = {
   Home: undefined;
   ProductList: undefined;
   ProductForm: { productId?: number };
+  Pos: undefined;
+  Payment: { resumeSaleId?: number };
+  Receipt: { sale: SaleResponse };
   ModulePlaceholder: { title: string };
 };
 
@@ -55,11 +62,11 @@ interface MenuItem {
   title: string;
   permission: string;
   /** Stack route to navigate to (defaults to ModulePlaceholder). */
-  route?: 'ProductList';
+  route?: 'ProductList' | 'Pos';
 }
 
 const MENU_ITEMS: MenuItem[] = [
-  { key: 'pos', title: 'Kasir / POS', permission: 'sales.create' },
+  { key: 'pos', title: 'Kasir / POS', permission: 'sales.create', route: 'Pos' },
   {
     key: 'products',
     title: 'Produk',
@@ -196,6 +203,21 @@ function AppNavigator() {
         options={({ route }) => ({
           title: route.params.productId !== undefined ? 'Ubah Produk' : 'Tambah Produk',
         })}
+      />
+      <AppStack.Screen
+        name="Pos"
+        component={PosScreen}
+        options={{ title: 'Kasir' }}
+      />
+      <AppStack.Screen
+        name="Payment"
+        component={PaymentScreen}
+        options={{ title: 'Pembayaran' }}
+      />
+      <AppStack.Screen
+        name="Receipt"
+        component={ReceiptScreen}
+        options={{ title: 'Struk', headerBackVisible: false }}
       />
       <AppStack.Screen
         name="ModulePlaceholder"

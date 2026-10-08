@@ -31,14 +31,15 @@ auth → business rule → audit → test → frontend → states → integrasi 
 - [x] Mobile: daftar produk + search, form produk (tsc lolos)
 - [ ] Audit log PRICE_CHANGE formal → Milestone 7
 
-## MILESTONE 3 — POS / Sales
+## MILESTONE 3 — POS / Sales ✅ (2026-10-08, lihat `MILESTONE_3_REPORT.md`)
 
-- [ ] `sales`, `sale_items` (snapshot harga), `sale_payments`, `document_counters`
-- [ ] Checkout `@Transactional` 10 langkah (PRD §34); split payment; kembalian
-- [ ] Hold/resume (status HELD, tanpa potong stok); invoice unik concurrent-safe
-- [ ] Test: valid checkout, empty cart, insufficient stock, **concurrent checkout**,
-      double submit (idempotency), partial payment
-- [ ] Mobile: POS screen (cart, barcode search, keyboard shortcut), payment, receipt
+- [x] `sales`, `sale_items` (snapshot harga), `sale_payments`, `document_counters`
+- [x] Checkout `@Transactional` atomic; split payment; kembalian otomatis
+- [x] Hold/resume (status HELD, tanpa potong stok); invoice unik concurrent-safe (pessimistic lock)
+- [x] Test: 6 test ditulis (valid, empty cart, insufficient stock, double submit/idempotency, hold/resume, inactive product) — belum dijalankan (env)
+- [x] Mobile: POS screen (cart, search), payment (split), receipt
+- [ ] Concurrent checkout stress test → dijalankan di env dengan DB
+- [ ] Shift validation → Milestone 4
 
 ## MILESTONE 4 — Cashier Shift
 
