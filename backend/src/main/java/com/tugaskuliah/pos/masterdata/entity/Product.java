@@ -50,6 +50,9 @@ public class Product {
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductVariant> variants = new ArrayList<>();
 

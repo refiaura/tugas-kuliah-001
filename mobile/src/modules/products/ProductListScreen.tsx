@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -18,6 +19,7 @@ import { useAuthStore } from '../../stores/authStore';
 import {
   listProducts,
   ProductResponse,
+  productImageUrl,
 } from '../../services/productApi';
 import { AppStackParamList } from '../../app/navigation';
 import { Badge, Button, Card, EmptyState, ScreenHeader } from '../../components';
@@ -87,28 +89,38 @@ export default function ProductListScreen({ navigation }: Props) {
     return unsub;
   }, [navigation, load, search]);
 
-  const renderItem = ({ item }: { item: ProductResponse }) => (
-    <Pressable
-      onPress={() =>
-        navigation.navigate('ProductForm', { productId: item.id })
-      }>
-      <Card style={styles.card}>
-        <View style={styles.cardTop}>
-          <View style={styles.cardInfo}>
-            <Text style={styles.name} numberOfLines={1}>
-              {item.name}
-            </Text>
-            <Text style={styles.sku}>SKU · {item.sku}</Text>
+  const renderItem = ({ item }: { item: ProductResponse }) => {
+    const thumb = productImageUrl(item.imageUrl);
+    return (
+      <Pressable
+        onPress={() =>
+          navigation.navigate('ProductForm', { productId: item.id })
+        }>
+        <Card style={styles.card}>
+          <View style={styles.cardRow}>
+            {thumb ? (
+              <Image source={{ uri: thumb }} style={styles.thumb} />
+            ) : (
+              <View style={[styles.thumb, styles.thumbPlaceholder]}>
+                <Text style={styles.thumbIcon}>○</Text>
+              </View>
+            )}
+            <View style={styles.cardInfo}>
+              <Text style={styles.name} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <Text style={styles.sku}>SKU · {item.sku}</Text>
+              <Text style={styles.price}>{formatRupiah(item.sellingPrice)}</Text>
+            </View>
+            <Badge
+              label={item.active ? 'Aktif' : 'Nonaktif'}
+              tone={item.active ? 'accent' : 'neutral'}
+            />
           </View>
-          <Badge
-            label={item.active ? 'Aktif' : 'Nonaktif'}
-            tone={item.active ? 'accent' : 'neutral'}
-          />
-        </View>
-        <Text style={styles.price}>{formatRupiah(item.sellingPrice)}</Text>
-      </Card>
-    </Pressable>
-  );
+        </Card>
+      </Pressable>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -214,11 +226,26 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: spacing.md,
   },
-  cardTop: {
+  cardRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.sm,
+    alignItems: 'center',
+  },
+  thumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: colors.slate[100],
+    marginRight: spacing.md,
+  },
+  thumbPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  thumbIcon: {
+    fontSize: 20,
+    color: colors.textMuted,
   },
   cardInfo: {
     flex: 1,

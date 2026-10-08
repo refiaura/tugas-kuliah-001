@@ -12,6 +12,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -22,14 +23,18 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { useAuthStore } from '../../stores/authStore';
 import {
   CategoryResponse,
+  ImageAsset,
   createProduct,
   getProduct,
   listCategories,
+  productImageUrl,
   updateProduct,
   updateProductPrice,
+  uploadProductImage,
 } from '../../services/productApi';
 import { AppStackParamList } from '../../app/navigation';
 import { Button, Card, Input, ScreenHeader } from '../../components';
@@ -60,10 +65,16 @@ export default function ProductFormScreen({ navigation, route }: Props) {
   const isEdit = productId !== undefined;
   const hasPermission = useAuthStore(s => s.hasPermission);
   const canUpdatePrice = hasPermission('product.price.update');
+  const canUploadImage = hasPermission('product.update');
 
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Photo: remote URL (edit mode) or locally picked asset (create mode).
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [pendingAsset, setPendingAsset] = useState<ImageAsset | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const [sku, setSku] = useState('');
   const [barcode, setBarcode] = useState('');
@@ -111,6 +122,7 @@ export default function ProductFormScreen({ navigation, route }: Props) {
           setActive(p.active);
           setOrigPurchasePrice(p.purchasePrice);
           setOrigSellingPrice(p.sellingPrice);
+          setImageUrl(productImageUrl(p.imageUrl));
         } catch (e) {
           setFormError(
             e instanceof Error ? e.message : 'Gagal memuat produk.',
@@ -124,6 +136,73 @@ export default function ProductFormScreen({ navigation, route }: Props) {
   const selectedCategory = categories.find(c => c.id === categoryId) ?? null;
   const selectedUnit =
     UNITS.find(u => u.id === unitId) ?? { id: unitId, code: 'PCS' };
+
+  /** Preview URI: remote image, or locally picked asset awaiting upload. */
+  const photoUri = imageUrl ?? pendingAsset?.uri ?? null;
+
+  const doUpload = async (targetId: number, asset: ImageAsset) => {
+    setUploading(true);
+    try {
+      const updated = await uploadProductImage(targetId, asset);
+      setImageUrl(productImageUrl(updated.imageUrl));
+      setPendingAsset(null);
+    } catch (e) {
+      Alert.alert(
+        'Gagal mengunggah foto',
+        e instanceof Error ? e.message : 'Coba lagi.',
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handlePickPhoto = (fromCamera: boolean) => {
+    void (async () => {
+      const options = {
+        mediaType: 'photo' as const,
+        quality: 0.8 as const,
+        maxWidth: 1024,
+        maxHeight: 1024,
+      };
+      const result = fromCamera
+        ? await launchCamera(options)
+        : await launchImageLibrary(options);
+      if (result.didCancel) {
+        return;
+      }
+      if (result.errorCode) {
+        Alert.alert(
+          'Gagal',
+          result.errorMessage ?? 'Tidak dapat memilih foto.',
+        );
+        return;
+      }
+      const a = result.assets?.[0];
+      if (!a?.uri) {
+        return;
+      }
+      const asset: ImageAsset = {
+        uri: a.uri,
+        fileName: a.fileName,
+        type: a.type,
+      };
+      if (isEdit && productId !== undefined) {
+        // Edit mode: upload immediately.
+        await doUpload(productId, asset);
+      } else {
+        // Create mode: hold until the product exists.
+        setPendingAsset(asset);
+      }
+    })();
+  };
+
+  const handleChangePhoto = () => {
+    Alert.alert('Foto produk', 'Pilih sumber foto', [
+      { text: 'Ambil Foto', onPress: () => handlePickPhoto(true) },
+      { text: 'Pilih dari Galeri', onPress: () => handlePickPhoto(false) },
+      { text: 'Batal', style: 'cancel' },
+    ]);
+  };
 
   const handleSave = async () => {
     if (saving) {
@@ -158,7 +237,7 @@ export default function ProductFormScreen({ navigation, route }: Props) {
     setSaving(true);
     try {
       if (!isEdit) {
-        await createProduct({
+        const created = await createProduct({
           sku: sku.trim(),
           barcode: barcode.trim() || undefined,
           name: name.trim(),
@@ -169,6 +248,10 @@ export default function ProductFormScreen({ navigation, route }: Props) {
           minimumStock: minStock,
           active,
         });
+        // Upload pending photo now that the product exists.
+        if (pendingAsset) {
+          await doUpload(created.id, pendingAsset);
+        }
       } else if (productId !== undefined) {
         await updateProduct(productId, {
           barcode: barcode.trim() || undefined,
@@ -225,6 +308,41 @@ export default function ProductFormScreen({ navigation, route }: Props) {
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled">
+        {/* Photo */}
+        {canUploadImage ? (
+          <>
+            <SectionLabel>Foto produk</SectionLabel>
+            <Card style={styles.card}>
+              <View style={styles.photoRow}>
+                {photoUri ? (
+                  <Image
+                    source={{ uri: photoUri }}
+                    style={styles.photo}
+                    testID="product-photo"
+                  />
+                ) : (
+                  <View style={[styles.photo, styles.photoPlaceholder]}>
+                    <Text style={styles.photoPlaceholderIcon}>📷</Text>
+                  </View>
+                )}
+                <View style={styles.photoActions}>
+                  <Button
+                    title={photoUri ? 'Ganti Foto' : 'Tambah Foto'}
+                    variant="secondary"
+                    onPress={handleChangePhoto}
+                    loading={uploading}
+                    disabled={uploading || saving}
+                    testID="product-photo-change"
+                  />
+                  <Text style={styles.photoHint}>
+                    JPG, PNG, atau WebP · maks 2MB
+                  </Text>
+                </View>
+              </View>
+            </Card>
+          </>
+        ) : null}
+
         {/* Basic info */}
         <SectionLabel>Informasi produk</SectionLabel>
         <Card style={styles.card}>
@@ -520,6 +638,35 @@ const styles = StyleSheet.create({
     color: colors.danger[600],
     marginTop: spacing.md,
     textAlign: 'center',
+  },
+  photoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  photo: {
+    width: 96,
+    height: 96,
+    borderRadius: radius.md,
+    backgroundColor: colors.slate[100],
+  },
+  photoPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+  },
+  photoPlaceholderIcon: {
+    fontSize: 32,
+  },
+  photoActions: {
+    flex: 1,
+    marginLeft: spacing.lg,
+  },
+  photoHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: spacing.sm,
   },
   footer: {
     paddingHorizontal: spacing.xl,

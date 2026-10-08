@@ -8,9 +8,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -67,5 +69,12 @@ public class ProductController {
         var page = productService.priceHistory(id, pageable);
         return ResponseEntity.ok(ApiResponse.paged(page.getContent(), "Histori harga",
                 page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages()));
+    }
+
+    @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('product.update')")
+    public ResponseEntity<ApiResponse<ProductResponse>> uploadImage(
+            @PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(ApiResponse.ok(productService.uploadImage(id, file), "Foto produk diperbarui"));
     }
 }

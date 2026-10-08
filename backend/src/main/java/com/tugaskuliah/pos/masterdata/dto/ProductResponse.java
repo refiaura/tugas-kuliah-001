@@ -8,5 +8,5 @@ public record ProductResponse(
         Long categoryId, String categoryName,
         Long unitId, String unitCode,
         BigDecimal purchasePrice, BigDecimal sellingPrice, BigDecimal minimumStock,
-        boolean active, List<VariantResponse> variants) {
+        boolean active, String imageUrl, List<VariantResponse> variants) {
 }

@@ -3,6 +3,7 @@
  * (Bearer injection + 401 refresh handled in services/api.ts).
  */
 import { api, getApiErrorMessage } from './api';
+import { API_BASE_URL } from '../config';
 import { ApiResponse, PageInfo } from '../types/api';
 
 export interface ProductResponse {
@@ -18,6 +19,7 @@ export interface ProductResponse {
   sellingPrice: number;
   minimumStock: number;
   active: boolean;
+  imageUrl: string | null;
   variants: unknown[];
 }
 
@@ -161,5 +163,44 @@ export async function listCategories(): Promise<CategoryResponse[]> {
     return unwrap(res, 'Gagal memuat daftar kategori');
   } catch (e) {
     throw new Error(getApiErrorMessage(e, 'Gagal memuat daftar kategori'));
+  }
+}
+
+/** Full URL for a product image path returned by the backend (e.g. "/uploads/products/…"). */
+export function productImageUrl(imageUrl: string | null | undefined): string | null {
+  if (!imageUrl) {
+    return null;
+  }
+  if (imageUrl.startsWith('http')) {
+    return imageUrl;
+  }
+  return `${API_BASE_URL}${imageUrl}`;
+}
+
+export interface ImageAsset {
+  uri: string;
+  fileName?: string;
+  type?: string;
+}
+
+export async function uploadProductImage(
+  productId: number,
+  asset: ImageAsset,
+): Promise<ProductResponse> {
+  try {
+    const form = new FormData();
+    form.append('file', {
+      uri: asset.uri,
+      name: asset.fileName ?? `product-${productId}.jpg`,
+      type: asset.type ?? 'image/jpeg',
+    } as unknown as Blob);
+    const res = await api.post<ApiResponse<ProductResponse>>(
+      `/products/${productId}/image`,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return unwrap(res, 'Gagal mengunggah foto produk');
+  } catch (e) {
+    throw new Error(getApiErrorMessage(e, 'Gagal mengunggah foto produk'));
   }
 }

@@ -166,11 +166,75 @@ public class ProductService {
                 p.getCategory() != null ? p.getCategory().getName() : null,
                 p.getUnit().getId(), p.getUnit().getCode(),
                 p.getPurchasePrice(), p.getSellingPrice(), p.getMinimumStock(),
-                p.isActive(),
+                p.isActive(), p.getImageUrl(),
                 p.getVariants().stream()
                         .map(v -> new VariantResponse(v.getId(), v.getName(), v.getSku(), v.getBarcode(),
                                 v.getPurchasePrice(), v.getSellingPrice(), v.isActive()))
                         .toList());
+    }
+
+    /**
+     * Upload/replace product image. Only jpg/jpeg/png/webp, max 2MB.
+     * Files are stored under {@code uploads/products/} (relative to working dir)
+     * and served via {@code /uploads/**}. The previous file is deleted.
+     */
+    @Transactional
+    public ProductResponse uploadImage(Long id, org.springframework.web.multipart.MultipartFile file) {
+        Product p = findById(id);
+        if (file == null || file.isEmpty()) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "File foto tidak boleh kosong");
+        }
+        String contentType = file.getContentType();
+        String ext = switch (contentType == null ? "" : contentType.toLowerCase()) {
+            case "image/jpeg" -> "jpg";
+            case "image/png" -> "png";
+            case "image/webp" -> "webp";
+            default -> throw new ApiException(ErrorCode.VALIDATION_ERROR,
+                    "Tipe file tidak didukung. Gunakan JPG, PNG, atau WebP.");
+        };
+        long maxBytes = 2L * 1024 * 1024;
+        if (file.getSize() > maxBytes) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "Ukuran file maksimal 2MB");
+        }
+        try {
+            java.nio.file.Path dir = java.nio.file.Paths.get("uploads", "products");
+            java.nio.file.Files.createDirectories(dir);
+            // Delete previous image (best-effort).
+            deleteImageFile(p.getImageUrl());
+            String filename = "product-" + id + "-" + System.currentTimeMillis() + "." + ext;
+            java.nio.file.Path target = dir.resolve(filename);
+            file.transferTo(target);
+            p.setImageUrl("/uploads/products/" + filename);
+            p.setUpdatedAt(OffsetDateTime.now());
+            p.setUpdatedBy(currentUsername());
+            return toResponse(productRepository.save(p));
+        } catch (ApiException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ApiException(ErrorCode.INTERNAL_ERROR, "Gagal menyimpan foto produk");
+        }
+    }
+
+    /** Best-effort delete of a previously stored image file. */
+    private void deleteImageFile(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return;
+        }
+        // Only delete files we created: /uploads/products/<filename>
+        if (!imageUrl.startsWith("/uploads/products/")) {
+            return;
+        }
+        String filename = imageUrl.substring("/uploads/products/".length());
+        // Reject path traversal attempts.
+        if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
+            return;
+        }
+        try {
+            java.nio.file.Files.deleteIfExists(
+                    java.nio.file.Paths.get("uploads", "products", filename));
+        } catch (Exception ignored) {
+            // best-effort
+        }
     }
 
     private String blankToNull(String s) {
