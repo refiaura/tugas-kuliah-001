@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -285,5 +286,85 @@ class ReportIntegrationTest {
                         .header("Authorization", "Bearer " + kasirToken))
                 .andExpect(status().isOk());
         assertEquals(0, unreadCount(kasirToken));
+    }
+
+    // ---------- export ----------
+
+    @Test
+    void salesExportXlsx_returnsFile() throws Exception {
+        Product p = createProduct("EXP-001", "Export Product", "9000", "0");
+        setStock(p.getId(), new BigDecimal("100"));
+        openShift(kasirToken);
+        checkout(kasirToken, p.getId(), 1);
+
+        MvcResult res = mockMvc.perform(get("/api/v1/reports/sales/export")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("format", "xlsx"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .andReturn();
+
+        String disposition = res.getResponse().getHeader("Content-Disposition");
+        assertTrue(disposition != null && disposition.contains("attachment"),
+                "expected attachment disposition, got: " + disposition);
+        assertTrue(disposition.contains("laporan-penjualan-"),
+                "expected laporan-penjualan filename, got: " + disposition);
+        assertTrue(res.getResponse().getContentAsByteArray().length > 0,
+                "expected non-empty xlsx bytes");
+    }
+
+    @Test
+    void salesExportCsv_hasBomAndHeader() throws Exception {
+        MvcResult res = mockMvc.perform(get("/api/v1/reports/sales/export")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("format", "csv"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        byte[] bytes = res.getResponse().getContentAsByteArray();
+        assertTrue(bytes.length >= 3, "expected BOM + content");
+        // UTF-8 BOM
+        assertEquals((byte) 0xEF, bytes[0]);
+        assertEquals((byte) 0xBB, bytes[1]);
+        assertEquals((byte) 0xBF, bytes[2]);
+
+        String body = new String(bytes, 3, bytes.length - 3, java.nio.charset.StandardCharsets.UTF_8);
+        assertTrue(body.startsWith("No. Invoice,"), "expected CSV header, got: " + body.substring(0, Math.min(60, body.length())));
+    }
+
+    @Test
+    void productsExportPdf_returnsPdf() throws Exception {
+        mockMvc.perform(get("/api/v1/reports/products/export")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("format", "pdf"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"));
+    }
+
+    @Test
+    void profitExportXlsx_returnsFile() throws Exception {
+        mockMvc.perform(get("/api/v1/reports/profit/export")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("format", "xlsx"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+    }
+
+    @Test
+    void kasirCannotExportReports() throws Exception {
+        mockMvc.perform(get("/api/v1/reports/sales/export")
+                        .header("Authorization", "Bearer " + kasirToken)
+                        .param("format", "xlsx"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void exportInvalidFormat_returnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/reports/sales/export")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("format", "exe"))
+                .andExpect(status().isBadRequest());
     }
 }

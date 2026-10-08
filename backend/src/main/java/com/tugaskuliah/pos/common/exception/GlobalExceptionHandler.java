@@ -42,6 +42,12 @@ public class GlobalExceptionHandler {
         return status(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
+        String msg = ex.getMessage();
+        return status(HttpStatus.BAD_REQUEST, msg == null || msg.isBlank() ? "Parameter tidak valid" : msg);
+    }
+
     @ExceptionHandler({AccessDeniedException.class})
     public ResponseEntity<ApiResponse<Void>> handleDenied(AccessDeniedException ex) {
         return status(HttpStatus.FORBIDDEN, ErrorCode.FORBIDDEN.getDefaultMessage());

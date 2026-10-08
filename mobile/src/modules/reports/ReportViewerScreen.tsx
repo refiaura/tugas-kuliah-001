@@ -2,10 +2,13 @@
  * Viewer generik untuk 6 jenis laporan — modern minimalist.
  * Filter: rentang tanggal (7 hari terakhir default). Paged untuk sales & purchases.
  */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Modal,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -15,11 +18,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { AppStackParamList } from '../../app/navigation';
 import {
   CashReportRow,
+  ExportFormat,
   InventoryReportRow,
   ProductReportRow,
   ProfitReport,
   PurchaseReportRow,
   SalesReportRow,
+  exportReport,
   formatDate,
   formatDateTime,
   formatRupiah,
@@ -31,10 +36,11 @@ import {
   getSalesReport,
   last7DaysRange,
 } from '../../services/reportApi';
+import { saveAndShare } from '../../services/fileShare';
 import { ReportKind } from './ReportsScreen';
 import { PageInfo } from '../../types/api';
-import { Badge, Card, EmptyState } from '../../components';
-import { colors, spacing, typography } from '../../theme';
+import { Badge, Button, Card, EmptyState } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'ReportViewer'>;
 
@@ -154,7 +160,7 @@ function RowCard({ item }: { item: Row }) {
   }
 }
 
-export default function ReportViewerScreen({ route }: Props) {
+export default function ReportViewerScreen({ route, navigation }: Props) {
   const { kind } = route.params as { kind: ReportKind };
   const [rows, setRows] = useState<Row[]>([]);
   const [profit, setProfit] = useState<ProfitReport | null>(null);
@@ -163,8 +169,45 @@ export default function ReportViewerScreen({ route }: Props) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exportVisible, setExportVisible] = useState(false);
+  const [exporting, setExporting] = useState<ExportFormat | null>(null);
 
   const paged = kind === 'sales' || kind === 'purchases';
+
+  // Header export button
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      // eslint-disable-next-line react/no-unstable-nested-components
+      headerRight: () => (
+        <Pressable
+          onPress={() => setExportVisible(true)}
+          style={styles.headerBtn}
+          hitSlop={12}>
+          <Text style={styles.headerBtnText}>Export</Text>
+        </Pressable>
+      ),
+    });
+  }, [navigation]);
+
+  const doExport = useCallback(
+    async (format: ExportFormat) => {
+      setExporting(format);
+      try {
+        const filter = last7DaysRange();
+        const file = await exportReport(kind, format, filter);
+        await saveAndShare(file);
+      } catch (e) {
+        Alert.alert(
+          'Export gagal',
+          e instanceof Error ? e.message : 'Tidak dapat mengunduh laporan.',
+        );
+      } finally {
+        setExporting(null);
+        setExportVisible(false);
+      }
+    },
+    [kind],
+  );
 
   const load = useCallback(
     async (p: number, append: boolean) => {
@@ -263,6 +306,12 @@ export default function ReportViewerScreen({ route }: Props) {
           </Card>
           <Text style={styles.rangeNote}>Periode 7 hari terakhir</Text>
         </View>
+        <ExportModal
+          visible={exportVisible}
+          exporting={exporting}
+          onPick={doExport}
+          onClose={() => setExportVisible(false)}
+        />
       </View>
     );
   }
@@ -289,7 +338,58 @@ export default function ReportViewerScreen({ route }: Props) {
           ) : undefined
         }
       />
+      <ExportModal
+        visible={exportVisible}
+        exporting={exporting}
+        onPick={doExport}
+        onClose={() => setExportVisible(false)}
+      />
     </View>
+  );
+}
+
+const FORMATS: { format: ExportFormat; label: string; desc: string }[] = [
+  { format: 'xlsx', label: 'Excel (.xlsx)', desc: 'Spreadsheet, bisa diolah ulang' },
+  { format: 'pdf', label: 'PDF (.pdf)', desc: 'Siap cetak / arsip' },
+  { format: 'csv', label: 'CSV (.csv)', desc: 'Data mentah, kompatibel Excel' },
+];
+
+function ExportModal({
+  visible,
+  exporting,
+  onPick,
+  onClose,
+}: {
+  visible: boolean;
+  exporting: ExportFormat | null;
+  onPick: (f: ExportFormat) => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.overlay} onPress={onClose}>
+        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Text style={styles.sheetTitle}>Export Laporan</Text>
+          <Text style={styles.sheetSub}>Pilih format file (7 hari terakhir)</Text>
+          {FORMATS.map((f) => (
+            <Pressable
+              key={f.format}
+              style={styles.formatRow}
+              onPress={() => onPick(f.format)}
+              disabled={exporting !== null}>
+              <View style={styles.formatText}>
+                <Text style={styles.formatLabel}>{f.label}</Text>
+                <Text style={styles.formatDesc}>{f.desc}</Text>
+              </View>
+              {exporting === f.format ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : null}
+            </Pressable>
+          ))}
+          <Button title="Batal" variant="ghost" onPress={onClose} disabled={exporting !== null} />
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -297,6 +397,55 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  headerBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  headerBtnText: {
+    ...typography.bodyBold,
+    color: colors.primary,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.xl,
+    paddingBottom: spacing.xxxl,
+  },
+  sheetTitle: {
+    ...typography.title,
+    color: colors.text,
+  },
+  sheetSub: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
+  },
+  formatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  formatText: {
+    flex: 1,
+  },
+  formatLabel: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  formatDesc: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   center: {
     flex: 1,

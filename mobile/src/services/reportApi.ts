@@ -197,6 +197,59 @@ export async function getProfitReport(filter: ReportFilter): Promise<ProfitRepor
   }
 }
 
+/* --------------------------------- export --------------------------------- */
+
+export type ExportFormat = 'xlsx' | 'pdf' | 'csv';
+export type ReportKind = 'sales' | 'products' | 'inventory' | 'cash' | 'purchases' | 'profit';
+
+export interface ExportedFile {
+  /** Raw file bytes. */
+  data: ArrayBuffer;
+  /** Suggested filename from server (Content-Disposition) or fallback. */
+  filename: string;
+  /** MIME type. */
+  contentType: string;
+}
+
+/**
+ * Downloads a report export file from the backend.
+ * Returns raw bytes + filename; caller saves & shares via react-native-fs/share.
+ */
+export async function exportReport(
+  kind: ReportKind,
+  format: ExportFormat,
+  filter: ReportFilter,
+): Promise<ExportedFile> {
+  const params = { ...toQuery(filter), format };
+  // strip pagination — export is always full
+  delete (params as Record<string, unknown>).page;
+  delete (params as Record<string, unknown>).size;
+  try {
+    const res = await api.get(`/reports/${kind}/export`, {
+      params,
+      responseType: 'arraybuffer',
+    });
+    const rawDisposition = res.headers['content-disposition'];
+    const disposition = Array.isArray(rawDisposition)
+      ? rawDisposition.join('; ')
+      : String(rawDisposition ?? '');
+    const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/.exec(disposition);
+    const filename = match
+      ? decodeURIComponent(match[1])
+      : `laporan-${kind}.${format}`;
+    const rawContentType = res.headers['content-type'];
+    return {
+      data: res.data as ArrayBuffer,
+      filename,
+      contentType: Array.isArray(rawContentType)
+        ? rawContentType[0]
+        : String(rawContentType ?? 'application/octet-stream'),
+    };
+  } catch (e) {
+    throw new Error(getApiErrorMessage(e, 'Gagal mengunduh laporan'));
+  }
+}
+
 /* ----------------------------- notifications ----------------------------- */
 
 export interface AppNotification {
