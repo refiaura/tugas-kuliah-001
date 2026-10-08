@@ -1,5 +1,5 @@
 /**
- * Close shift screen.
+ * Close shift screen — modern minimalist.
  *
  * Shows the expected cash (from shift summary), asks for the actual
  * physical cash counted, computes the variance live, warns on large
@@ -9,11 +9,9 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -25,6 +23,8 @@ import {
   ShiftSummary,
 } from '../../services/shiftApi';
 import { formatRupiah } from '../../stores/cartStore';
+import { Badge, Button, Card, EmptyState, Input, ScreenHeader } from '../../components';
+import { colors, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'CloseShift'>;
 
@@ -64,8 +64,8 @@ export default function CloseShiftScreen({ navigation }: Props) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.muted}>Memuat ringkasan…</Text>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.centerText}>Memuat ringkasan…</Text>
       </View>
     );
   }
@@ -73,7 +73,7 @@ export default function CloseShiftScreen({ navigation }: Props) {
   if (!currentShift) {
     return (
       <View style={styles.center}>
-        <Text style={styles.title}>Tidak ada shift aktif</Text>
+        <EmptyState title="Tidak ada shift aktif" />
       </View>
     );
   }
@@ -127,8 +127,16 @@ export default function CloseShiftScreen({ navigation }: Props) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.card}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled">
+      <ScreenHeader
+        title="Tutup Shift"
+        subtitle="Hitung uang fisik di laci dan catat jumlahnya."
+      />
+
+      <Card style={styles.card}>
         <Text style={styles.cardTitle}>Ringkasan Shift</Text>
         {summary && (
           <>
@@ -139,51 +147,48 @@ export default function CloseShiftScreen({ navigation }: Props) {
           </>
         )}
         <Row label="Ekspektasi kas" value={formatRupiah(expected)} bold />
-      </View>
+      </Card>
 
-      <View style={styles.card}>
+      <Card style={styles.card}>
         <Text style={styles.cardTitle}>Hitung Kas Fisik</Text>
-        <Text style={styles.label}>Jumlah uang fisik di laci (Rp)</Text>
-        <TextInput
-          style={styles.input}
+        <Input
+          label="Jumlah uang fisik di laci (Rp)"
           value={actualText}
           onChangeText={setActualText}
           keyboardType="numeric"
           placeholder="0"
+          editable={!closing}
         />
         {hasInput && (
-          <>
-            <Row
-              label="Selisih"
-              value={formatRupiah(variance)}
-            />
-            {showWarning && (
-              <Text style={styles.warning}>
-                ⚠️ Selisih melebihi batas wajar. Periksa kembali hitungan kas.
-              </Text>
-            )}
-            {variance === 0 && (
-              <Text style={styles.ok}>✓ Kas cocok dengan ekspektasi.</Text>
-            )}
-          </>
+          <View style={styles.varianceBox}>
+            <View style={styles.varianceRow}>
+              <Text style={styles.varianceLabel}>Selisih</Text>
+              <Text style={styles.varianceValue}>{formatRupiah(variance)}</Text>
+            </View>
+            {showWarning ? (
+              <Badge label="Selisih melebihi batas wajar — periksa hitungan kas" tone="danger" />
+            ) : variance === 0 ? (
+              <Badge label="Kas cocok dengan ekspektasi" tone="accent" />
+            ) : null}
+          </View>
         )}
-        <Text style={styles.label}>Catatan (opsional)</Text>
-        <TextInput
-          style={styles.input}
+        <Input
+          label="Catatan (opsional)"
           value={notes}
           onChangeText={setNotes}
           placeholder="cth. Selisih karena…"
+          editable={!closing}
         />
-      </View>
+      </Card>
 
-      <Pressable
-        style={[styles.dangerBtn, closing && styles.btnDisabled]}
+      <Button
+        title={closing ? 'Menutup…' : 'Tutup Shift'}
+        variant="danger"
+        size="lg"
         onPress={doClose}
-        disabled={closing}>
-        <Text style={styles.dangerBtnText}>
-          {closing ? 'Menutup…' : 'Tutup Shift'}
-        </Text>
-      </Pressable>
+        loading={closing}
+        style={styles.submit}
+      />
     </ScrollView>
   );
 }
@@ -200,106 +205,80 @@ function Row({
   return (
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, bold && styles.bold]}>{value}</Text>
+      <Text style={[styles.rowValue, bold && styles.rowValueBold]}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    backgroundColor: '#f5f5f5',
-    flexGrow: 1,
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    paddingBottom: spacing.huge,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    backgroundColor: colors.background,
+    padding: spacing.xxl,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  muted: {
-    color: '#666',
-    marginTop: 8,
+  centerText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.lg,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    ...typography.subtitle,
+    color: colors.text,
+    marginBottom: spacing.md,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    paddingVertical: spacing.sm,
   },
   rowLabel: {
-    color: '#666',
-    fontSize: 14,
+    ...typography.body,
+    color: colors.textSecondary,
   },
   rowValue: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.text,
   },
-  bold: {
-    fontWeight: '700',
-    fontSize: 16,
+  rowValueBold: {
+    ...typography.title,
   },
   divider: {
     height: 1,
-    backgroundColor: '#eee',
-    marginVertical: 8,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
   },
-  warning: {
-    color: '#c62828',
-    fontWeight: '600',
-    marginTop: 8,
+  varianceBox: {
+    marginBottom: spacing.md,
   },
-  ok: {
-    color: '#2e7d32',
-    fontWeight: '600',
-    marginTop: 8,
-  },
-  dangerBtn: {
-    backgroundColor: '#c62828',
-    borderRadius: 8,
-    padding: 14,
+  varianceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 4,
+    marginBottom: spacing.sm,
   },
-  dangerBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
+  varianceLabel: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
-  btnDisabled: {
-    opacity: 0.6,
+  varianceValue: {
+    ...typography.title,
+    color: colors.text,
+  },
+  submit: {
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.md,
   },
 });

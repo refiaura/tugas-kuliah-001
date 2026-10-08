@@ -1,6 +1,6 @@
 /**
- * PO form screen: pick a supplier, add product lines (qty + unit price),
- * and create the PO in DRAFT status.
+ * PO form — modern minimalist.
+ * Supplier & lines in Card sections, Input components, single accent.
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -11,7 +11,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -26,6 +25,8 @@ import {
   listProducts,
   ProductResponse,
 } from '../../services/productApi';
+import { Button, Card, Input, ScreenHeader } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'PurchaseOrderForm'>;
 
@@ -41,6 +42,10 @@ function parsePositive(text: string): number | null {
   if (cleaned === '') return null;
   const n = Number(cleaned);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function SectionTitle({ children }: { children: string }) {
+  return <Text style={styles.sectionTitle}>{children}</Text>;
 }
 
 export default function PurchaseOrderFormScreen({ navigation }: Props) {
@@ -185,314 +190,291 @@ export default function PurchaseOrderFormScreen({ navigation }: Props) {
   };
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-      {/* supplier */}
-      <Text style={styles.sectionTitle}>Supplier</Text>
-      <Pressable
-        style={styles.selector}
-        onPress={() => setSupplierPickerOpen(v => !v)}>
-        <Text style={selectedSupplier ? styles.selectorText : styles.muted}>
-          {selectedSupplier
-            ? `${selectedSupplier.name} (${selectedSupplier.supplierCode})`
-            : 'Pilih supplier…'}
-        </Text>
-        <Text style={styles.chevron}>{supplierPickerOpen ? '▴' : '▾'}</Text>
-      </Pressable>
-      {supplierPickerOpen && (
-        <View style={styles.pickerBox}>
-          <TextInput
-            style={styles.searchInput}
-            value={supplierSearch}
-            onChangeText={setSupplierSearch}
-            placeholder="Cari supplier…"
-          />
-          {filteredSuppliers.slice(0, 15).map(s => (
-            <Pressable
-              key={s.id}
-              style={styles.pickerItem}
-              onPress={() => {
-                setSupplierId(s.id);
-                setSupplierPickerOpen(false);
-              }}>
-              <Text style={styles.pickerItemText}>
-                {s.name}{' '}
-                <Text style={styles.muted}>({s.supplierCode})</Text>
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      )}
+    <View style={styles.container}>
+      <ScreenHeader title="PO Baru" subtitle="Dibuat sebagai Draft" />
 
-      {/* lines */}
-      <Text style={styles.sectionTitle}>Baris Produk</Text>
-      {lines.map(l => (
-        <View key={l.productId} style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.name} numberOfLines={1}>
-              {l.productName}
-            </Text>
-            <Pressable
-              onPress={() =>
-                setLines(prev =>
-                  prev.filter(x => x.productId !== l.productId),
-                )
-              }
-              hitSlop={8}>
-              <Text style={styles.remove}>✕</Text>
-            </Pressable>
-          </View>
-          <View style={styles.cardRow}>
-            <TextInput
-              style={styles.numInput}
-              value={l.qtyText}
-              onChangeText={t => updateLine(l.productId, 'qtyText', t)}
-              keyboardType="decimal-pad"
-              placeholder="Qty"
-            />
-            <TextInput
-              style={styles.numInput}
-              value={l.priceText}
-              onChangeText={t => updateLine(l.productId, 'priceText', t)}
-              keyboardType="decimal-pad"
-              placeholder="Harga beli"
-            />
-          </View>
-        </View>
-      ))}
-      <Pressable
-        style={styles.secondaryBtn}
-        onPress={() => {
-          setProductPickerOpen(true);
-          void searchProducts();
-        }}>
-        <Text style={styles.secondaryBtnText}>+ Tambah Produk</Text>
-      </Pressable>
-
-      {productPickerOpen && (
-        <View style={styles.pickerBox}>
-          <View style={styles.searchRow}>
-            <TextInput
-              style={[styles.searchInput, styles.searchFlex]}
-              value={productSearch}
-              onChangeText={setProductSearch}
-              placeholder="Cari produk…"
-              onSubmitEditing={() => void searchProducts()}
-            />
-            <Pressable style={styles.searchBtn} onPress={() => void searchProducts()}>
-              <Text style={styles.searchBtnText}>Cari</Text>
-            </Pressable>
-          </View>
-          {loadingProducts && <ActivityIndicator style={styles.loader} />}
-          {products.map(p => (
-            <Pressable
-              key={p.id}
-              style={styles.pickerItem}
-              onPress={() => addLine(p)}>
-              <Text style={styles.pickerItemText}>
-                {p.name} <Text style={styles.muted}>({p.sku})</Text>
-              </Text>
-            </Pressable>
-          ))}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled">
+        {/* Supplier */}
+        <SectionTitle>Supplier</SectionTitle>
+        <Card>
           <Pressable
-            style={styles.ghostBtn}
-            onPress={() => setProductPickerOpen(false)}>
-            <Text style={styles.ghostBtnText}>Tutup</Text>
+            style={styles.selector}
+            onPress={() => setSupplierPickerOpen(v => !v)}>
+            <Text
+              style={
+                selectedSupplier ? styles.selectorText : styles.selectorMuted
+              }>
+              {selectedSupplier
+                ? `${selectedSupplier.name} (${selectedSupplier.supplierCode})`
+                : 'Pilih supplier…'}
+            </Text>
+            <Text style={styles.chevron}>{supplierPickerOpen ? '▴' : '▾'}</Text>
           </Pressable>
-        </View>
-      )}
+          {supplierPickerOpen && (
+            <View style={styles.pickerBox}>
+              <Input
+                placeholder="Cari supplier…"
+                value={supplierSearch}
+                onChangeText={setSupplierSearch}
+                containerStyle={styles.pickerSearch}
+              />
+              {filteredSuppliers.slice(0, 15).map(s => (
+                <Pressable
+                  key={s.id}
+                  style={styles.pickerItem}
+                  onPress={() => {
+                    setSupplierId(s.id);
+                    setSupplierPickerOpen(false);
+                  }}>
+                  <Text style={styles.pickerItemText}>
+                    {s.name}{' '}
+                    <Text style={styles.muted}>({s.supplierCode})</Text>
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </Card>
 
-      {/* notes */}
-      <Text style={styles.sectionTitle}>Catatan (opsional)</Text>
-      <TextInput
-        style={[styles.searchInput, styles.notesInput]}
-        value={notes}
-        onChangeText={setNotes}
-        placeholder="Catatan PO…"
-        multiline
-      />
+        {/* Lines */}
+        <SectionTitle>Baris Produk</SectionTitle>
+        {lines.map(l => (
+          <Card key={l.productId} style={styles.lineCard}>
+            <View style={styles.lineHeader}>
+              <Text style={styles.lineName} numberOfLines={1}>
+                {l.productName}
+              </Text>
+              <Pressable
+                onPress={() =>
+                  setLines(prev =>
+                    prev.filter(x => x.productId !== l.productId),
+                  )
+                }
+                hitSlop={8}>
+                <Text style={styles.remove}>✕</Text>
+              </Pressable>
+            </View>
+            <View style={styles.lineRow}>
+              <Input
+                label="Qty"
+                value={l.qtyText}
+                onChangeText={t => updateLine(l.productId, 'qtyText', t)}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                containerStyle={styles.lineInput}
+              />
+              <Input
+                label="Harga beli"
+                value={l.priceText}
+                onChangeText={t => updateLine(l.productId, 'priceText', t)}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                containerStyle={styles.lineInput}
+              />
+            </View>
+          </Card>
+        ))}
 
-      <Text style={styles.total}>Total: Rp{formatMoney(total)}</Text>
+        <Button
+          title="+ Tambah Produk"
+          variant="secondary"
+          onPress={() => {
+            setProductPickerOpen(true);
+            void searchProducts();
+          }}
+          style={styles.addProduct}
+        />
 
-      <Pressable
-        style={[styles.primaryBtn, submitting && styles.btnDisabled]}
-        onPress={() => void doCreate()}
-        disabled={submitting}>
-        <Text style={styles.primaryBtnText}>
-          {submitting ? 'Menyimpan…' : 'Buat PO (Draft)'}
-        </Text>
-      </Pressable>
-      <View style={styles.spacer} />
-    </ScrollView>
+        {productPickerOpen && (
+          <Card style={styles.pickerCard}>
+            <View style={styles.searchRow}>
+              <Input
+                placeholder="Cari produk…"
+                value={productSearch}
+                onChangeText={setProductSearch}
+                onSubmitEditing={() => void searchProducts()}
+                containerStyle={styles.searchFlex}
+              />
+              <Button
+                title="Cari"
+                onPress={() => void searchProducts()}
+              />
+            </View>
+            {loadingProducts && (
+              <ActivityIndicator
+                size="small"
+                color={colors.primary}
+                style={styles.loader}
+              />
+            )}
+            {products.map(p => (
+              <Pressable
+                key={p.id}
+                style={styles.pickerItem}
+                onPress={() => addLine(p)}>
+                <Text style={styles.pickerItemText}>
+                  {p.name} <Text style={styles.muted}>({p.sku})</Text>
+                </Text>
+              </Pressable>
+            ))}
+            <Button
+              title="Tutup"
+              variant="ghost"
+              onPress={() => setProductPickerOpen(false)}
+            />
+          </Card>
+        )}
+
+        {/* Notes */}
+        <SectionTitle>Catatan (opsional)</SectionTitle>
+        <Card>
+          <Input
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Catatan PO…"
+            multiline
+            containerStyle={styles.noMargin}
+          />
+        </Card>
+
+        <Card style={styles.totalCard}>
+          <Text style={styles.totalLabel}>Total</Text>
+          <Text style={styles.totalValue}>Rp{formatMoney(total)}</Text>
+        </Card>
+
+        <Button
+          title={submitting ? 'Menyimpan…' : 'Buat PO (Draft)'}
+          onPress={() => void doCreate()}
+          loading={submitting}
+          size="lg"
+          style={styles.submit}
+        />
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 16,
+    backgroundColor: colors.background,
+  },
+  content: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.huge,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginTop: 12,
-    marginBottom: 8,
+    ...typography.subtitle,
+    color: colors.text,
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
   },
   selector: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#ddd',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: spacing.sm,
   },
   selectorText: {
-    fontSize: 15,
+    ...typography.body,
+    color: colors.text,
+  },
+  selectorMuted: {
+    ...typography.body,
+    color: colors.textMuted,
   },
   chevron: {
     fontSize: 16,
-    color: '#888',
+    color: colors.textMuted,
   },
   muted: {
-    color: '#999',
+    color: colors.textMuted,
   },
   pickerBox: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    marginTop: 8,
-    padding: 8,
-    maxHeight: 260,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    maxHeight: 280,
   },
-  searchInput: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  searchFlex: {
-    flex: 1,
-  },
-  searchBtn: {
-    backgroundColor: '#2e7d32',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  searchBtnText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  loader: {
-    marginVertical: 12,
+  pickerSearch: {
+    marginBottom: spacing.sm,
   },
   pickerItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 6,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.border,
   },
   pickerItemText: {
-    fontSize: 14,
+    ...typography.body,
+    color: colors.text,
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+  lineCard: {
+    marginBottom: spacing.md,
   },
-  cardHeader: {
+  lineHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.md,
   },
-  name: {
-    fontSize: 15,
-    fontWeight: '600',
+  lineName: {
+    ...typography.bodyBold,
+    color: colors.text,
     flex: 1,
   },
   remove: {
-    color: '#c62828',
-    fontSize: 16,
-    padding: 4,
+    ...typography.body,
+    color: colors.danger[600],
+    padding: spacing.sm,
   },
-  cardRow: {
+  lineRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.md,
   },
-  numInput: {
+  lineInput: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    textAlign: 'right',
+    marginBottom: 0,
   },
-  secondaryBtn: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
+  addProduct: {
+    marginTop: spacing.sm,
+  },
+  pickerCard: {
+    marginTop: spacing.md,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  searchFlex: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  loader: {
+    marginVertical: spacing.md,
+  },
+  noMargin: {
+    marginBottom: 0,
+  },
+  totalCard: {
+    marginTop: spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2e7d32',
-    marginTop: 4,
   },
-  secondaryBtnText: {
-    color: '#2e7d32',
-    fontWeight: '600',
+  totalLabel: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
-  ghostBtn: {
-    marginTop: 8,
-    alignItems: 'center',
-    padding: 6,
+  totalValue: {
+    ...typography.title,
+    color: colors.text,
   },
-  ghostBtnText: {
-    color: '#2e7d32',
-    fontWeight: '600',
-  },
-  notesInput: {
-    minHeight: 70,
-    textAlignVertical: 'top',
-  },
-  total: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginVertical: 12,
-  },
-  primaryBtn: {
-    backgroundColor: '#2e7d32',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  primaryBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  btnDisabled: {
-    opacity: 0.6,
-  },
-  spacer: {
-    height: 40,
+  submit: {
+    marginTop: spacing.lg,
   },
 });

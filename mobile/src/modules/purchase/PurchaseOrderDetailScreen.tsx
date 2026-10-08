@@ -1,12 +1,12 @@
 /**
- * PO detail screen: lines with received/returned progress and lifecycle
- * action buttons gated by permission and PO status.
+ * PO detail — modern minimalist.
+ * Card sections (info, items, total) with Badge status,
+ * action buttons stacked at the bottom.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -25,8 +25,33 @@ import {
   PurchaseOrder,
   submitPurchaseOrder,
 } from '../../services/purchaseApi';
+import { Badge, Button, Card, EmptyState, ScreenHeader } from '../../components';
+import { colors, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'PurchaseOrderDetail'>;
+
+function poTone(status: string): 'neutral' | 'accent' | 'danger' | 'warning' | 'info' {
+  switch (status) {
+    case 'DRAFT':
+      return 'neutral';
+    case 'SUBMITTED':
+      return 'warning';
+    case 'APPROVED':
+      return 'info';
+    case 'ORDERED':
+    case 'PARTIALLY_RECEIVED':
+    case 'RECEIVED':
+      return 'accent';
+    case 'CANCELLED':
+      return 'danger';
+    default:
+      return 'neutral';
+  }
+}
+
+function SectionTitle({ children }: { children: string }) {
+  return <Text style={styles.sectionTitle}>{children}</Text>;
+}
 
 export default function PurchaseOrderDetailScreen({ navigation, route }: Props) {
   const { poId } = route.params;
@@ -84,7 +109,7 @@ export default function PurchaseOrderDetailScreen({ navigation, route }: Props) 
   if (loading || !po) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.muted}>Memuat detail PO…</Text>
       </View>
     );
@@ -96,209 +121,191 @@ export default function PurchaseOrderDetailScreen({ navigation, route }: Props) 
   const canReturn = hasPermission('purchase.return');
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.headerCard}>
-        <View style={styles.headerRow}>
-          <Text style={styles.docNo}>{po.docNo}</Text>
-          <Text style={styles.status}>{poStatusLabel(po.status)}</Text>
-        </View>
-        <Text style={styles.supplier}>{po.supplierName}</Text>
-        <Text style={styles.meta}>
-          Dibuat oleh {po.createdBy ?? '-'}
-          {po.approvedBy ? ` · Approved oleh ${po.approvedBy}` : ''}
-        </Text>
-        {po.notes ? <Text style={styles.notes}>{po.notes}</Text> : null}
-      </View>
+    <View style={styles.container}>
+      <ScreenHeader title={po.docNo} subtitle={po.supplierName} />
 
-      {po.lines.map(l => (
-        <View key={l.id} style={styles.card}>
-          <Text style={styles.name} numberOfLines={1}>
-            {l.productName}
-          </Text>
+      <ScrollView contentContainerStyle={styles.content}>
+        {/* Info */}
+        <Card>
+          <View style={styles.statusRow}>
+            <Badge label={poStatusLabel(po.status)} tone={poTone(po.status)} />
+          </View>
           <Text style={styles.meta}>
-            Order {l.qty} × Rp{formatMoney(l.unitPrice)} = Rp
-            {formatMoney(l.lineTotal)}
+            Dibuat oleh {po.createdBy ?? '-'}
+            {po.approvedBy ? ` · Approved oleh ${po.approvedBy}` : ''}
           </Text>
-          <Text style={styles.progress}>
-            Diterima {l.receivedQty} · Diretur {l.returnedQty}
-          </Text>
+          {po.notes ? <Text style={styles.notes}>{po.notes}</Text> : null}
+        </Card>
+
+        {/* Items */}
+        <SectionTitle>Baris Produk</SectionTitle>
+        {po.lines.length === 0 ? (
+          <Card>
+            <EmptyState title="Belum ada baris" icon="▤" />
+          </Card>
+        ) : (
+          po.lines.map(l => (
+            <Card key={l.id} style={styles.lineCard}>
+              <Text style={styles.lineName} numberOfLines={1}>
+                {l.productName}
+              </Text>
+              <Text style={styles.lineDetail}>
+                Order {l.qty} × Rp{formatMoney(l.unitPrice)} = Rp
+                {formatMoney(l.lineTotal)}
+              </Text>
+              <Text style={styles.lineProgress}>
+                Diterima {l.receivedQty} · Diretur {l.returnedQty}
+              </Text>
+            </Card>
+          ))
+        )}
+
+        {/* Total */}
+        <Card style={styles.totalCard}>
+          <Text style={styles.totalLabel}>Total PO</Text>
+          <Text style={styles.totalValue}>Rp{formatMoney(po.totalAmount)}</Text>
+        </Card>
+
+        {/* Actions */}
+        <SectionTitle>Aksi</SectionTitle>
+        <View style={styles.actions}>
+          {po.status === 'DRAFT' && canEdit && (
+            <Button
+              title="Submit untuk Approval"
+              onPress={() => void runAction('Submit PO', submitPurchaseOrder)}
+              loading={acting}
+              size="lg"
+            />
+          )}
+          {po.status === 'SUBMITTED' && canApprove && (
+            <Button
+              title="Approve"
+              onPress={() => void runAction('Approve PO', approvePurchaseOrder)}
+              loading={acting}
+              size="lg"
+            />
+          )}
+          {po.status === 'APPROVED' && canEdit && (
+            <Button
+              title="Kirim ke Supplier"
+              onPress={() =>
+                void runAction('Kirim PO', markOrderedPurchaseOrder)
+              }
+              loading={acting}
+              size="lg"
+            />
+          )}
+          {(po.status === 'ORDERED' || po.status === 'PARTIALLY_RECEIVED') &&
+            canReceive && (
+              <Button
+                title="Terima Barang"
+                onPress={() =>
+                  navigation.navigate('GoodsReceipt', { poId: po.id })
+                }
+                size="lg"
+              />
+            )}
+          {(po.status === 'ORDERED' ||
+            po.status === 'PARTIALLY_RECEIVED' ||
+            po.status === 'RECEIVED') &&
+            canReturn && (
+              <Button
+                title="Retur ke Supplier"
+                variant="secondary"
+                onPress={() =>
+                  navigation.navigate('PurchaseReturn', { poId: po.id })
+                }
+                size="lg"
+              />
+            )}
+          {(po.status === 'DRAFT' || po.status === 'SUBMITTED') && canEdit && (
+            <Button
+              title="Batalkan PO"
+              variant="danger"
+              onPress={() => void runAction('Batalkan PO', cancelPurchaseOrder)}
+              loading={acting}
+              size="lg"
+            />
+          )}
         </View>
-      ))}
-
-      <Text style={styles.total}>Total: Rp{formatMoney(po.totalAmount)}</Text>
-
-      <View style={styles.actions}>
-        {po.status === 'DRAFT' && canEdit && (
-          <Pressable
-            style={[styles.actionBtn, acting && styles.btnDisabled]}
-            onPress={() => void runAction('Submit PO', submitPurchaseOrder)}
-            disabled={acting}>
-            <Text style={styles.actionBtnText}>Submit untuk Approval</Text>
-          </Pressable>
-        )}
-        {po.status === 'SUBMITTED' && canApprove && (
-          <Pressable
-            style={[styles.actionBtn, acting && styles.btnDisabled]}
-            onPress={() => void runAction('Approve PO', approvePurchaseOrder)}
-            disabled={acting}>
-            <Text style={styles.actionBtnText}>Approve</Text>
-          </Pressable>
-        )}
-        {po.status === 'APPROVED' && canEdit && (
-          <Pressable
-            style={[styles.actionBtn, acting && styles.btnDisabled]}
-            onPress={() =>
-              void runAction('Kirim PO', markOrderedPurchaseOrder)
-            }
-            disabled={acting}>
-            <Text style={styles.actionBtnText}>Kirim ke Supplier</Text>
-          </Pressable>
-        )}
-        {(po.status === 'DRAFT' || po.status === 'SUBMITTED') && canEdit && (
-          <Pressable
-            style={[
-              styles.actionBtn,
-              styles.dangerBtn,
-              acting && styles.btnDisabled,
-            ]}
-            onPress={() => void runAction('Batalkan PO', cancelPurchaseOrder)}
-            disabled={acting}>
-            <Text style={[styles.actionBtnText, styles.dangerText]}>
-              Batalkan PO
-            </Text>
-          </Pressable>
-        )}
-        {(po.status === 'ORDERED' || po.status === 'PARTIALLY_RECEIVED') &&
-          canReceive && (
-            <Pressable
-              style={[styles.actionBtn, styles.receiveBtn]}
-              onPress={() =>
-                navigation.navigate('GoodsReceipt', { poId: po.id })
-              }>
-              <Text style={styles.actionBtnText}>Terima Barang</Text>
-            </Pressable>
-          )}
-        {(po.status === 'ORDERED' ||
-          po.status === 'PARTIALLY_RECEIVED' ||
-          po.status === 'RECEIVED') &&
-          canReturn && (
-            <Pressable
-              style={[styles.actionBtn, styles.returnBtn]}
-              onPress={() =>
-                navigation.navigate('PurchaseReturn', { poId: po.id })
-              }>
-              <Text style={styles.actionBtnText}>Retur ke Supplier</Text>
-            </Pressable>
-          )}
-      </View>
-      <View style={styles.spacer} />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 16,
+    backgroundColor: colors.background,
+  },
+  content: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.huge,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    backgroundColor: colors.background,
+    padding: spacing.xl,
   },
   muted: {
-    color: '#666',
-    marginTop: 8,
+    ...typography.body,
+    color: colors.textMuted,
+    marginTop: spacing.md,
   },
-  headerCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+  statusRow: {
+    marginBottom: spacing.md,
   },
-  headerRow: {
+  meta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  notes: {
+    ...typography.body,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+    marginTop: spacing.md,
+  },
+  sectionTitle: {
+    ...typography.subtitle,
+    color: colors.text,
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  lineCard: {
+    marginBottom: spacing.md,
+  },
+  lineName: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  lineDetail: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  lineProgress: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+    marginTop: spacing.xs,
+  },
+  totalCard: {
+    marginTop: spacing.lg,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  docNo: {
-    fontSize: 17,
-    fontWeight: '700',
+  totalLabel: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
-  status: {
-    fontSize: 13,
-    color: '#2e7d32',
-    fontWeight: '600',
-  },
-  supplier: {
-    fontSize: 15,
-    marginTop: 4,
-  },
-  meta: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
-  },
-  notes: {
-    fontSize: 13,
-    color: '#555',
-    marginTop: 6,
-    fontStyle: 'italic',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-  },
-  name: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  progress: {
-    fontSize: 13,
-    color: '#2e7d32',
-    marginTop: 4,
-  },
-  total: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginVertical: 12,
+  totalValue: {
+    ...typography.title,
+    color: colors.text,
   },
   actions: {
-    gap: 10,
-  },
-  actionBtn: {
-    backgroundColor: '#2e7d32',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-  },
-  actionBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  dangerBtn: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#c62828',
-  },
-  dangerText: {
-    color: '#c62828',
-  },
-  receiveBtn: {
-    backgroundColor: '#1565c0',
-  },
-  returnBtn: {
-    backgroundColor: '#ef6c00',
-  },
-  btnDisabled: {
-    opacity: 0.6,
-  },
-  spacer: {
-    height: 40,
+    gap: spacing.md,
   },
 });

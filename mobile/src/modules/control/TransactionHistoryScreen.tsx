@@ -1,6 +1,6 @@
 /**
- * Transaction history screen: paged list of sales with a status filter.
- * Tapping a row opens the transaction detail (void / return actions).
+ * Transaction history — modern minimalist.
+ * Paged sales list with status filter; tap a row for detail / void / return.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -21,6 +21,8 @@ import {
 } from '../../services/saleApi';
 import { PageInfo } from '../../types/api';
 import { formatRupiah } from '../../stores/cartStore';
+import { Badge, Card, EmptyState } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'TransactionHistory'>;
 
@@ -41,14 +43,14 @@ function filterLabel(f: string | null): string {
   }
 }
 
-function statusColor(status: string): string {
+function statusTone(status: string): 'accent' | 'danger' | 'neutral' {
   switch (status) {
-    case 'VOIDED':
-      return '#c62828';
     case 'COMPLETED':
-      return '#2e7d32';
+      return 'accent';
+    case 'VOIDED':
+      return 'danger';
     default:
-      return '#555';
+      return 'neutral';
   }
 }
 
@@ -111,20 +113,25 @@ export default function TransactionHistoryScreen({ navigation }: Props) {
 
   const renderItem = ({ item }: { item: SaleResponse }) => (
     <Pressable
-      style={styles.card}
+      style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
       onPress={() =>
         navigation.navigate('TransactionDetail', { saleId: item.id })
       }>
-      <View style={styles.cardHeader}>
-        <Text style={styles.invoice}>{item.invoiceNo}</Text>
-        <Text style={[styles.status, { color: statusColor(item.status) }]}>
-          {filterLabel(item.status)}
+      <Card>
+        <View style={styles.cardHeader}>
+          <Text style={styles.invoice} numberOfLines={1}>
+            {item.invoiceNo}
+          </Text>
+          <Badge
+            label={filterLabel(item.status)}
+            tone={statusTone(item.status)}
+          />
+        </View>
+        <Text style={styles.meta}>
+          {item.cashierName ?? '-'} · {formatDate(item.completedAt)}
         </Text>
-      </View>
-      <Text style={styles.meta}>
-        {item.cashierName ?? '-'} · {formatDate(item.completedAt)}
-      </Text>
-      <Text style={styles.total}>{formatRupiah(item.grandTotal)}</Text>
+        <Text style={styles.total}>{formatRupiah(item.grandTotal)}</Text>
+      </Card>
     </Pressable>
   );
 
@@ -153,7 +160,7 @@ export default function TransactionHistoryScreen({ navigation }: Props) {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <>
@@ -163,7 +170,11 @@ export default function TransactionHistoryScreen({ navigation }: Props) {
             contentContainerStyle={styles.list}
             renderItem={renderItem}
             ListEmptyComponent={
-              <Text style={styles.empty}>Tidak ada transaksi.</Text>
+              <EmptyState
+                title="Tidak ada transaksi"
+                message="Belum ada transaksi pada filter ini."
+                icon="🧾"
+              />
             }
           />
           <View style={styles.pager}>
@@ -195,7 +206,7 @@ export default function TransactionHistoryScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   center: {
     flex: 1,
@@ -204,99 +215,88 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexGrow: 0,
-    paddingVertical: 8,
   },
   filterContent: {
-    paddingHorizontal: 16,
-    gap: 8,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
   },
   filterChip: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: colors.surface,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
   },
   filterChipActive: {
-    backgroundColor: '#2e7d32',
-    borderColor: '#2e7d32',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   filterText: {
-    fontSize: 13,
-    color: '#555',
+    ...typography.small,
+    color: colors.textSecondary,
   },
   filterTextActive: {
-    color: '#fff',
+    color: colors.white,
     fontWeight: '600',
   },
   list: {
-    padding: 16,
-    paddingTop: 4,
-    paddingBottom: 8,
+    padding: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
     flexGrow: 1,
+    gap: spacing.md,
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+  pressable: {
+    // wrapper so Card keeps its own padding
+  },
+  pressed: {
+    opacity: 0.85,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   invoice: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  status: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.text,
+    flex: 1,
+    marginRight: spacing.sm,
   },
   meta: {
-    fontSize: 12,
-    color: '#888',
+    ...typography.caption,
+    color: colors.textMuted,
   },
   total: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  empty: {
-    textAlign: 'center',
-    color: '#888',
-    marginTop: 32,
+    ...typography.title,
+    color: colors.text,
+    marginTop: spacing.xs,
   },
   pager: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: colors.border,
   },
   pageBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   pageBtnText: {
-    color: '#2e7d32',
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.primary,
     fontSize: 14,
   },
   pageInfo: {
-    fontSize: 13,
-    color: '#666',
+    ...typography.caption,
+    color: colors.textSecondary,
   },
   btnDisabled: {
     opacity: 0.4,

@@ -1,20 +1,20 @@
 /**
- * Login screen: username + password, keyboard-friendly (return key submits),
- * loading state, and server error messages.
+ * Login screen — modern minimalist.
+ * Centered brand mark, generous whitespace, single accent.
  */
 import React, { useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
   type TextInputInstance,
 } from 'react-native';
 import { useAuthStore } from '../../stores/authStore';
+import { Button, Card, Input } from '../../components';
+import { colors, spacing, typography } from '../../theme';
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
@@ -27,7 +27,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (submitting) {
-      return; // prevent double submit
+      return;
     }
     if (!username.trim() || !password) {
       setFormError('Username dan password wajib diisi.');
@@ -48,50 +48,58 @@ export default function LoginScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Kasir POS</Text>
-        <Text style={styles.subtitle}>Masuk untuk melanjutkan</Text>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled">
+        {/* Brand */}
+        <View style={styles.brand}>
+          <View style={styles.logo}>
+            <Text style={styles.logoText}>K</Text>
+          </View>
+          <Text style={styles.appName}>Kasir POS</Text>
+          <Text style={styles.tagline}>Kelola toko dengan tenang</Text>
+        </View>
 
-        <Text style={styles.label}>Username</Text>
-        <TextInput
-          style={styles.input}
-          value={username}
-          onChangeText={setUsername}
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="next"
-          onSubmitEditing={() => passwordRef.current?.focus()}
-          editable={!submitting}
-          testID="login-username"
-        />
+        {/* Form */}
+        <Card style={styles.card}>
+          <Text style={styles.cardTitle}>Selamat datang kembali</Text>
+          <Text style={styles.cardSubtitle}>Masuk untuk melanjutkan ke kasir</Text>
 
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          ref={passwordRef}
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          returnKeyType="go"
-          onSubmitEditing={handleLogin}
-          editable={!submitting}
-          testID="login-password"
-        />
+          <Input
+            label="Username"
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="next"
+            onSubmitEditing={() => passwordRef.current?.focus()}
+            editable={!submitting}
+            testID="login-username"
+          />
+          <Input
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            returnKeyType="go"
+            onSubmitEditing={handleLogin}
+            editable={!submitting}
+            error={formError ?? undefined}
+            testID="login-password"
+          />
 
-        {formError ? <Text style={styles.error}>{formError}</Text> : null}
+          <Button
+            title="Masuk"
+            onPress={handleLogin}
+            loading={submitting}
+            size="lg"
+            style={styles.submit}
+            testID="login-submit"
+          />
+        </Card>
 
-        <Pressable
-          style={[styles.button, submitting && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={submitting}
-          testID="login-submit">
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Masuk</Text>
-          )}
-        </Pressable>
-      </View>
+        <Text style={styles.footer}>v1.0 · Tugas Kuliah 001</Text>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -99,65 +107,61 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
+  },
+  scroll: {
+    flexGrow: 1,
     justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#f5f5f5',
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.huge,
+  },
+  brand: {
+    alignItems: 'center',
+    marginBottom: spacing.xxxl,
+  },
+  logo: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  logoText: {
+    ...typography.display,
+    color: colors.white,
+    fontSize: 36,
+  },
+  appName: {
+    ...typography.title,
+    color: colors.text,
+  },
+  tagline: {
+    ...typography.body,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 24,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    padding: spacing.xxl,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
+  cardTitle: {
+    ...typography.title,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  cardSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.xl,
+  },
+  submit: {
+    marginTop: spacing.md,
+  },
+  footer: {
+    ...typography.caption,
+    color: colors.textMuted,
     textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-    marginTop: 4,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 6,
-    marginTop: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    backgroundColor: '#fff',
-  },
-  error: {
-    color: '#c62828',
-    marginTop: 12,
-    fontSize: 14,
-  },
-  button: {
-    backgroundColor: '#1565c0',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+    marginTop: spacing.xxxl,
   },
 });

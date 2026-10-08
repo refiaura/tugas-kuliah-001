@@ -1,11 +1,14 @@
 /**
- * Menu daftar laporan. Setiap item membuka ReportViewer dengan tipe berbeda.
+ * Menu daftar laporan — modern minimalist.
+ * Grid kartu bersih; setiap item membuka ReportViewer dengan tipe berbeda.
  */
 import React from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../app/navigation';
 import { useAuthStore } from '../../stores/authStore';
+import { Card, EmptyState, ScreenHeader } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 export type ReportKind =
   | 'sales'
@@ -19,16 +22,17 @@ interface ReportItem {
   kind: ReportKind;
   title: string;
   desc: string;
+  icon: string;
   permission: string;
 }
 
 const REPORTS: ReportItem[] = [
-  { kind: 'sales', title: 'Laporan Penjualan', desc: 'Transaksi per invoice', permission: 'report.sales' },
-  { kind: 'products', title: 'Laporan Produk Terjual', desc: 'Qty & omzet per produk', permission: 'report.sales' },
-  { kind: 'inventory', title: 'Laporan Stok', desc: 'Mutasi & saldo per produk', permission: 'report.stock' },
-  { kind: 'cash', title: 'Laporan Kas', desc: 'Rekap kas per shift', permission: 'report.cash' },
-  { kind: 'purchases', title: 'Laporan Pembelian', desc: 'PO per supplier', permission: 'report.purchase' },
-  { kind: 'profit', title: 'Laporan Laba', desc: 'Penjualan bersih - HPP', permission: 'report.profit' },
+  { kind: 'sales', title: 'Laporan Penjualan', desc: 'Transaksi per invoice', icon: '🧾', permission: 'report.sales' },
+  { kind: 'products', title: 'Produk Terjual', desc: 'Qty & omzet per produk', icon: '📦', permission: 'report.sales' },
+  { kind: 'inventory', title: 'Laporan Stok', desc: 'Mutasi & saldo per produk', icon: '📊', permission: 'report.stock' },
+  { kind: 'cash', title: 'Laporan Kas', desc: 'Rekap kas per shift', icon: '💵', permission: 'report.cash' },
+  { kind: 'purchases', title: 'Laporan Pembelian', desc: 'PO per supplier', icon: '🛒', permission: 'report.purchase' },
+  { kind: 'profit', title: 'Laporan Laba', desc: 'Penjualan bersih − HPP', icon: '📈', permission: 'report.profit' },
 ];
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Reports'>;
@@ -37,24 +41,40 @@ export default function ReportsScreen({ navigation }: Props) {
   const hasPermission = useAuthStore(s => s.hasPermission);
   const visible = REPORTS.filter(r => hasPermission(r.permission));
 
+  if (visible.length === 0) {
+    return (
+      <View style={styles.center}>
+        <EmptyState
+          title="Tidak ada laporan"
+          message="Tidak ada laporan yang tersedia untuk akun ini."
+          icon="📊"
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Laporan" subtitle="Rekap & analisis usaha" />
       <FlatList
         data={visible}
         keyExtractor={item => item.kind}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <Text style={styles.empty}>Tidak ada laporan yang tersedia untuk akun ini.</Text>
-        }
+        numColumns={2}
+        contentContainerStyle={styles.grid}
+        columnWrapperStyle={styles.row}
         renderItem={({ item }) => (
           <Pressable
-            style={styles.item}
+            style={({ pressed }) => [styles.cell, pressed && styles.pressed]}
             onPress={() => navigation.navigate('ReportViewer', { kind: item.kind, title: item.title })}>
-            <View>
+            <Card style={styles.tile}>
+              <View style={styles.iconWrap}>
+                <Text style={styles.icon}>{item.icon}</Text>
+              </View>
               <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.desc}>{item.desc}</Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
+              <Text style={styles.desc} numberOfLines={2}>
+                {item.desc}
+              </Text>
+            </Card>
           </Pressable>
         )}
       />
@@ -63,24 +83,54 @@ export default function ReportsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  list: { padding: 16 },
-  item: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  title: { fontSize: 16, fontWeight: '600' },
-  desc: { fontSize: 13, color: '#666', marginTop: 2 },
-  chevron: { fontSize: 22, color: '#999' },
-  empty: { color: '#666', textAlign: 'center', marginTop: 40 },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    padding: spacing.xxl,
+  },
+  grid: {
+    padding: spacing.xl,
+    paddingTop: spacing.md,
+    gap: spacing.md,
+  },
+  row: {
+    gap: spacing.md,
+  },
+  cell: {
+    flex: 1,
+  },
+  pressed: {
+    opacity: 0.85,
+  },
+  tile: {
+    minHeight: 148,
+    justifyContent: 'flex-start',
+  },
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  icon: {
+    fontSize: 22,
+  },
+  title: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  desc: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
 });

@@ -1,6 +1,6 @@
 /**
- * Dashboard — KPI penjualan, inventaris, kas, dan alert.
- * GET /api/v1/dashboard (butuh permission report.*).
+ * Dashboard — modern minimalist.
+ * Hero revenue card + KPI grid + alerts.
  */
 import React, { useCallback, useState } from 'react';
 import {
@@ -17,24 +17,23 @@ import {
   formatRupiah,
   getDashboard,
 } from '../../services/reportApi';
+import { Badge, Card, EmptyState, ScreenHeader } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
-function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Kpi({ label, value, sub, danger }: { label: string; value: string; sub?: string; danger?: boolean }) {
   return (
-    <View style={styles.card}>
-      <Text style={styles.cardLabel}>{label}</Text>
-      <Text style={styles.cardValue}>{value}</Text>
-      {sub ? <Text style={styles.cardSub}>{sub}</Text> : null}
-    </View>
+    <Card style={styles.kpi} padding={spacing.lg}>
+      <Text style={styles.kpiLabel}>{label}</Text>
+      <Text style={styles.kpiValue}>{value}</Text>
+      {sub ? (
+        <Text style={[styles.kpiSub, danger && styles.kpiSubDanger]}>{sub}</Text>
+      ) : null}
+    </Card>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.grid}>{children}</View>
-    </View>
-  );
+function SectionTitle({ children }: { children: string }) {
+  return <Text style={styles.sectionTitle}>{children}</Text>;
 }
 
 const ALERT_LABEL: Record<string, string> = {
@@ -45,6 +44,14 @@ const ALERT_LABEL: Record<string, string> = {
   SHIFT_OPEN: 'Shift belum ditutup',
   PO_PENDING: 'PO perlu tindakan',
 };
+
+function todayLabel(): string {
+  return new Date().toLocaleDateString('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+}
 
 export default function DashboardScreen() {
   const [data, setData] = useState<DashboardResponse | null>(null);
@@ -75,7 +82,7 @@ export default function DashboardScreen() {
   if (loading && !data) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -83,95 +90,230 @@ export default function DashboardScreen() {
   if (error && !data) {
     return (
       <View style={styles.center}>
-        <Text style={styles.error}>{error}</Text>
+        <EmptyState title="Gagal memuat" message={error} icon="⚠" />
       </View>
     );
   }
 
+  const alerts = data?.alerts ?? [];
+
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(); }} />}>
-      <Section title="Penjualan Hari Ini">
-        <KpiCard label="Omzet" value={formatRupiah(data?.sales.revenueToday)} />
-        <KpiCard label="Transaksi" value={String(data?.sales.transactionCount ?? 0)} />
-        <KpiCard label="Item Terjual" value={String(data?.sales.itemsSold ?? 0)} />
-        <KpiCard label="Rata-rata/Transaksi" value={formatRupiah(data?.sales.averageTransactionValue)} />
-        <KpiCard label="Laba Kotor" value={formatRupiah(data?.sales.grossProfitToday)} />
-      </Section>
-
-      <Section title="Inventaris">
-        <KpiCard label="Total SKU" value={String(data?.inventory.totalActiveSku ?? 0)} />
-        <KpiCard label="Stok Menipis" value={String(data?.inventory.lowStockCount ?? 0)} />
-        <KpiCard label="Stok Habis" value={String(data?.inventory.outOfStockCount ?? 0)} />
-        <KpiCard label="Nilai Stok" value={formatRupiah(data?.inventory.stockValue)} />
-      </Section>
-
-      <Section title="Kas">
-        <KpiCard label="Kas Shift Aktif" value={formatRupiah(data?.cash.totalCashActiveShifts)} />
-        <KpiCard label="Cash In Hari Ini" value={formatRupiah(data?.cash.cashInToday)} />
-        <KpiCard label="Cash Out Hari Ini" value={formatRupiah(data?.cash.cashOutToday)} />
-        <KpiCard
-          label="Shift Aktif"
-          value={String(data?.cash.activeShiftCount ?? 0)}
-          sub={(data?.cash.shiftsWithVarianceToday ?? 0) > 0 ? `${data?.cash.shiftsWithVarianceToday} berselisih` : undefined}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => {
+            setRefreshing(true);
+            void load();
+          }}
+          tintColor={colors.primary}
         />
-      </Section>
+      }>
+      <ScreenHeader title="Dashboard" subtitle={todayLabel()} />
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Perhatian</Text>
-        {(data?.alerts ?? []).length === 0 ? (
+      {/* Hero — revenue today */}
+      <Card style={styles.hero}>
+        <Text style={styles.heroLabel}>Omzet Hari Ini</Text>
+        <Text style={styles.heroValue}>{formatRupiah(data?.sales.revenueToday)}</Text>
+        <View style={styles.heroRow}>
+          <Badge
+            label={`${data?.sales.transactionCount ?? 0} transaksi`}
+            tone="accent"
+          />
+          <Text style={styles.heroSub}>
+            Laba kotor {formatRupiah(data?.sales.grossProfitToday)}
+          </Text>
+        </View>
+      </Card>
+
+      {/* Sales KPIs */}
+      <SectionTitle>Penjualan</SectionTitle>
+      <View style={styles.grid}>
+        <Kpi label="Item terjual" value={String(data?.sales.itemsSold ?? 0)} />
+        <Kpi
+          label="Rata-rata transaksi"
+          value={formatRupiah(data?.sales.averageTransactionValue)}
+        />
+      </View>
+
+      {/* Inventory KPIs */}
+      <SectionTitle>Inventaris</SectionTitle>
+      <View style={styles.grid}>
+        <Kpi label="Total SKU" value={String(data?.inventory.totalActiveSku ?? 0)} />
+        <Kpi
+          label="Stok menipis"
+          value={String(data?.inventory.lowStockCount ?? 0)}
+          danger={(data?.inventory.lowStockCount ?? 0) > 0}
+        />
+        <Kpi
+          label="Stok habis"
+          value={String(data?.inventory.outOfStockCount ?? 0)}
+          danger={(data?.inventory.outOfStockCount ?? 0) > 0}
+        />
+        <Kpi label="Nilai stok" value={formatRupiah(data?.inventory.stockValue)} />
+      </View>
+
+      {/* Cash KPIs */}
+      <SectionTitle>Kas</SectionTitle>
+      <View style={styles.grid}>
+        <Kpi label="Kas shift aktif" value={formatRupiah(data?.cash.totalCashActiveShifts)} />
+        <Kpi label="Cash in hari ini" value={formatRupiah(data?.cash.cashInToday)} />
+        <Kpi label="Cash out hari ini" value={formatRupiah(data?.cash.cashOutToday)} />
+        <Kpi
+          label="Shift aktif"
+          value={String(data?.cash.activeShiftCount ?? 0)}
+          sub={
+            (data?.cash.shiftsWithVarianceToday ?? 0) > 0
+              ? `${data?.cash.shiftsWithVarianceToday} berselisih`
+              : undefined
+          }
+          danger={(data?.cash.shiftsWithVarianceToday ?? 0) > 0}
+        />
+      </View>
+
+      {/* Alerts */}
+      <SectionTitle>Perhatian</SectionTitle>
+      {alerts.length === 0 ? (
+        <Card>
           <Text style={styles.noAlert}>Tidak ada alert. Semua aman.</Text>
-        ) : (
-          (data?.alerts ?? []).map((a, i) => (
-            <View key={`${a.type}-${i}`} style={styles.alertRow}>
-              <Text style={styles.alertDot}>●</Text>
+        </Card>
+      ) : (
+        <Card padding={0}>
+          {alerts.map((a, i) => (
+            <View
+              key={`${a.type}-${i}`}
+              style={[styles.alertRow, i > 0 && styles.alertDivider]}>
+              <View style={styles.alertDot} />
               <View style={styles.alertBody}>
                 <Text style={styles.alertTitle}>{ALERT_LABEL[a.type] ?? a.type}</Text>
                 <Text style={styles.alertMsg}>{a.message}</Text>
               </View>
               <Text style={styles.alertCount}>{a.count}</Text>
             </View>
-          ))
-        )}
-      </View>
+          ))}
+        </Card>
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  error: { color: '#c62828', textAlign: 'center' },
-  section: { padding: 16, paddingBottom: 0 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 10 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    width: '48%',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  cardLabel: { fontSize: 12, color: '#666' },
-  cardValue: { fontSize: 17, fontWeight: '700', marginTop: 4 },
-  cardSub: { fontSize: 12, color: '#c62828', marginTop: 2 },
-  noAlert: { color: '#666', backgroundColor: '#fff', borderRadius: 12, padding: 14 },
-  alertRow: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
+  content: {
+    paddingBottom: spacing.huge,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    padding: spacing.xxl,
+  },
+  hero: {
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.xl,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+    padding: spacing.xl,
+  },
+  heroLabel: {
+    ...typography.caption,
+    color: colors.white,
+    opacity: 0.85,
+  },
+  heroValue: {
+    ...typography.display,
+    color: colors.white,
+    fontSize: 34,
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  heroRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.md,
   },
-  alertDot: { color: '#e65100', fontSize: 12, marginRight: 10 },
-  alertBody: { flex: 1 },
-  alertTitle: { fontWeight: '600', fontSize: 14 },
-  alertMsg: { color: '#666', fontSize: 13, marginTop: 2 },
-  alertCount: { fontSize: 16, fontWeight: '700', color: '#e65100' },
+  heroSub: {
+    ...typography.caption,
+    color: colors.white,
+    opacity: 0.85,
+  },
+  sectionTitle: {
+    ...typography.subtitle,
+    color: colors.text,
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.md,
+    marginTop: spacing.lg,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    paddingHorizontal: spacing.xl,
+  },
+  kpi: {
+    width: '48%',
+    flexGrow: 1,
+  },
+  kpiLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  kpiValue: {
+    ...typography.title,
+    color: colors.text,
+    marginTop: spacing.xs,
+  },
+  kpiSub: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  kpiSubDanger: {
+    color: colors.danger[600],
+    fontWeight: '600',
+  },
+  noAlert: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    padding: spacing.md,
+  },
+  alertRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  alertDivider: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  alertDot: {
+    width: 8,
+    height: 8,
+    borderRadius: radius.full,
+    backgroundColor: colors.warning[600],
+    marginRight: spacing.md,
+  },
+  alertBody: {
+    flex: 1,
+  },
+  alertTitle: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  alertMsg: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  alertCount: {
+    ...typography.title,
+    color: colors.warning[600],
+  },
 });

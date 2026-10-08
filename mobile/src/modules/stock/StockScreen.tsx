@@ -1,11 +1,12 @@
 /**
- * Inventory hub screen: permission-gated shortcuts to the stock documents
+ * Inventory hub screen — modern minimalist.
+ * Permission-gated shortcuts to the stock documents
  * (opname, adjustment, transfer) and the read-only movement history.
  */
 import React from 'react';
 import {
-  FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -13,6 +14,8 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../app/navigation';
 import { useAuthStore } from '../../stores/authStore';
+import { Card, EmptyState, ScreenHeader } from '../../components';
+import { colors, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Stock'>;
 
@@ -61,79 +64,83 @@ export default function StockScreen({ navigation }: Props) {
     hasPermission(item.permission),
   );
 
-  return (
-    <View style={styles.container}>
-      {visible.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={styles.emptyText}>
-            Anda tidak memiliki izin modul inventaris.
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={visible}
-          keyExtractor={item => item.key}
-          contentContainerStyle={styles.menuList}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => navigation.navigate(item.route)}>
-              <View>
-                <Text style={styles.menuTitle}>{item.title}</Text>
-                <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
-              </View>
-              <Text style={styles.menuChevron}>›</Text>
-            </Pressable>
-          )}
+  if (visible.length === 0) {
+    return (
+      <View style={styles.center}>
+        <EmptyState
+          title="Tidak ada akses"
+          message="Anda tidak memiliki izin modul inventaris."
         />
-      )}
-    </View>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScreenHeader
+        title="Inventaris"
+        subtitle="Kelola stok toko Anda."
+      />
+      <Card padding={0} style={styles.menu}>
+        {visible.map((item, i) => (
+          <Pressable
+            key={item.key}
+            onPress={() => navigation.navigate(item.route)}
+            style={[styles.menuItem, i > 0 && styles.menuDivider]}>
+            <View style={styles.menuBody}>
+              <Text style={styles.menuTitle}>{item.title}</Text>
+              <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+            </View>
+            <Text style={styles.menuChevron}>›</Text>
+          </Pressable>
+        ))}
+      </Card>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
+  },
+  content: {
+    paddingBottom: spacing.huge,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    backgroundColor: colors.background,
+    padding: spacing.xxl,
   },
-  emptyText: {
-    color: '#666',
-    textAlign: 'center',
-  },
-  menuList: {
-    padding: 16,
+  menu: {
+    marginHorizontal: spacing.xl,
   },
   menuItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    padding: spacing.lg,
+  },
+  menuDivider: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  menuBody: {
+    flex: 1,
   },
   menuTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.text,
   },
   menuSubtitle: {
-    fontSize: 13,
-    color: '#666',
+    ...typography.caption,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   menuChevron: {
     fontSize: 20,
-    color: '#999',
+    color: colors.textMuted,
   },
 });

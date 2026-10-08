@@ -1,5 +1,5 @@
 /**
- * Cashier shift screen.
+ * Cashier shift screen — modern minimalist.
  *
  * - No open shift + has shift.open: form to open a shift (opening cash).
  * - Open shift: live summary (cash sales, cash in/out, expected cash),
@@ -14,7 +14,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -28,6 +27,8 @@ import {
   ShiftSummary,
 } from '../../services/shiftApi';
 import { formatRupiah } from '../../stores/cartStore';
+import { Badge, Button, Card, EmptyState, Input, ScreenHeader } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Shift'>;
 
@@ -152,8 +153,8 @@ export default function ShiftScreen({ navigation }: Props) {
   if (shiftLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.muted}>Memuat shift…</Text>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.centerText}>Memuat shift…</Text>
       </View>
     );
   }
@@ -163,62 +164,71 @@ export default function ShiftScreen({ navigation }: Props) {
     if (!hasPermission('shift.open')) {
       return (
         <View style={styles.center}>
-          <Text style={styles.title}>Tidak ada shift aktif</Text>
-          <Text style={styles.muted}>
-            Anda tidak memiliki izin membuka shift.
-          </Text>
+          <EmptyState
+            title="Tidak ada shift aktif"
+            message="Anda tidak memiliki izin membuka shift."
+          />
         </View>
       );
     }
     return (
-      <ScrollView contentContainerStyle={styles.formWrap}>
-        <Text style={styles.title}>Buka Shift</Text>
-        <Text style={styles.muted}>
-          Mulai shift kasir dengan mencatat kas awal di laci.
-        </Text>
-        <Text style={styles.label}>Kas awal (Rp)</Text>
-        <TextInput
-          style={styles.input}
-          value={openingCashText}
-          onChangeText={setOpeningCashText}
-          keyboardType="numeric"
-          placeholder="0"
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled">
+        <ScreenHeader
+          title="Buka Shift"
+          subtitle="Mulai shift kasir dengan mencatat kas awal di laci."
         />
-        <Pressable
-          style={[styles.primaryBtn, opening && styles.btnDisabled]}
-          onPress={() => void doOpen()}
-          disabled={opening}>
-          <Text style={styles.primaryBtnText}>
-            {opening ? 'Membuka…' : 'Buka Shift'}
-          </Text>
-        </Pressable>
+        <Card style={styles.card}>
+          <Input
+            label="Kas awal (Rp)"
+            value={openingCashText}
+            onChangeText={setOpeningCashText}
+            keyboardType="numeric"
+            placeholder="0"
+            editable={!opening}
+          />
+          <Button
+            title={opening ? 'Membuka…' : 'Buka Shift'}
+            onPress={() => void doOpen()}
+            loading={opening}
+            size="lg"
+            style={styles.submit}
+          />
+        </Card>
       </ScrollView>
     );
   }
 
   /* -------------------------------- open shift ------------------------------ */
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Shift Aktif</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScreenHeader
+        title="Shift"
+        subtitle={formatDate(currentShift.openedAt)}
+        right={<Badge label="Aktif" tone="accent" />}
+      />
+
+      <Card style={styles.card}>
+        <Text style={styles.cardTitle}>Kasir Shift</Text>
         <Row label="Kasir" value={currentShift.cashierName ?? '-'} />
         <Row label="Dibuka" value={formatDate(currentShift.openedAt)} />
-        <Row
-          label="Kas awal"
-          value={formatRupiah(currentShift.openingCash)}
-        />
-      </View>
+        <Row label="Kas awal" value={formatRupiah(currentShift.openingCash)} />
+      </Card>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Ringkasan Kas</Text>
+      <Card style={styles.card}>
+        <View style={styles.cardTitleRow}>
+          <Text style={styles.cardTitle}>Ringkasan Kas</Text>
+          <Pressable onPress={() => void loadSummary()}>
+            <Text style={styles.reload}>Muat ulang</Text>
+          </Pressable>
+        </View>
         {summaryLoading ? (
-          <ActivityIndicator />
+          <ActivityIndicator color={colors.primary} />
         ) : summary ? (
           <>
-            <Row
-              label="Penjualan tunai"
-              value={formatRupiah(summary.cashSales)}
-            />
+            <Row label="Penjualan tunai" value={formatRupiah(summary.cashSales)} />
             <Row label="Kas masuk" value={formatRupiah(summary.cashIn)} />
             <Row label="Kas keluar" value={formatRupiah(summary.cashOut)} />
             <View style={styles.divider} />
@@ -231,36 +241,39 @@ export default function ShiftScreen({ navigation }: Props) {
         ) : (
           <Text style={styles.muted}>Ringkasan belum tersedia.</Text>
         )}
-        <Pressable style={styles.ghostBtn} onPress={() => void loadSummary()}>
-          <Text style={styles.ghostBtnText}>Muat ulang</Text>
-        </Pressable>
-      </View>
+      </Card>
 
       <View style={styles.rowBtns}>
-        <Pressable
-          style={styles.secondaryBtn}
-          onPress={() => {
-            setMvType('IN');
-            setMvVisible(true);
-          }}>
-          <Text style={styles.secondaryBtnText}>Kas Masuk</Text>
-        </Pressable>
-        <Pressable
-          style={styles.secondaryBtn}
-          onPress={() => {
-            setMvType('OUT');
-            setMvVisible(true);
-          }}>
-          <Text style={styles.secondaryBtnText}>Kas Keluar</Text>
-        </Pressable>
+        <View style={styles.rowBtn}>
+          <Button
+            title="Kas Masuk"
+            variant="secondary"
+            onPress={() => {
+              setMvType('IN');
+              setMvVisible(true);
+            }}
+          />
+        </View>
+        <View style={styles.rowBtn}>
+          <Button
+            title="Kas Keluar"
+            variant="secondary"
+            onPress={() => {
+              setMvType('OUT');
+              setMvVisible(true);
+            }}
+          />
+        </View>
       </View>
 
       {hasPermission('shift.close') && (
-        <Pressable
-          style={styles.dangerBtn}
-          onPress={() => navigation.navigate('CloseShift')}>
-          <Text style={styles.dangerBtnText}>Tutup Shift</Text>
-        </Pressable>
+        <Button
+          title="Tutup Shift"
+          variant="danger"
+          size="lg"
+          onPress={() => navigation.navigate('CloseShift')}
+          style={styles.closeBtn}
+        />
       )}
 
       <Modal visible={mvVisible} animationType="slide" transparent>
@@ -269,35 +282,36 @@ export default function ShiftScreen({ navigation }: Props) {
             <Text style={styles.modalTitle}>
               {mvType === 'IN' ? 'Kas Masuk' : 'Kas Keluar'}
             </Text>
-            <Text style={styles.label}>Jumlah (Rp)</Text>
-            <TextInput
-              style={styles.input}
+            <Input
+              label="Jumlah (Rp)"
               value={mvAmountText}
               onChangeText={setMvAmountText}
               keyboardType="numeric"
               placeholder="0"
+              editable={!mvSaving}
             />
-            <Text style={styles.label}>Alasan</Text>
-            <TextInput
-              style={styles.input}
+            <Input
+              label="Alasan"
               value={mvReason}
               onChangeText={setMvReason}
               placeholder="cth. Tambahan modal / bayar supplier"
+              editable={!mvSaving}
             />
             <View style={styles.rowBtns}>
-              <Pressable
-                style={styles.secondaryBtn}
-                onPress={() => setMvVisible(false)}>
-                <Text style={styles.secondaryBtnText}>Batal</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.primaryBtn, mvSaving && styles.btnDisabled]}
-                onPress={() => void doCashMovement()}
-                disabled={mvSaving}>
-                <Text style={styles.primaryBtnText}>
-                  {mvSaving ? 'Menyimpan…' : 'Simpan'}
-                </Text>
-              </Pressable>
+              <View style={styles.rowBtn}>
+                <Button
+                  title="Batal"
+                  variant="secondary"
+                  onPress={() => setMvVisible(false)}
+                />
+              </View>
+              <View style={styles.rowBtn}>
+                <Button
+                  title={mvSaving ? 'Menyimpan…' : 'Simpan'}
+                  onPress={() => void doCashMovement()}
+                  loading={mvSaving}
+                />
+              </View>
             </View>
           </View>
         </View>
@@ -318,143 +332,90 @@ function Row({
   return (
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, bold && styles.bold]}>{value}</Text>
+      <Text style={[styles.rowValue, bold && styles.rowValueBold]}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    backgroundColor: '#f5f5f5',
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  formWrap: {
-    padding: 24,
-    backgroundColor: '#f5f5f5',
-    flexGrow: 1,
+  content: {
+    paddingBottom: spacing.huge,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    backgroundColor: colors.background,
+    padding: spacing.xxl,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  muted: {
-    color: '#666',
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
+  centerText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.lg,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 8,
+    ...typography.subtitle,
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  reload: {
+    ...typography.small,
+    color: colors.primary,
+    fontWeight: '600',
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    paddingVertical: spacing.sm,
   },
   rowLabel: {
-    color: '#666',
-    fontSize: 14,
+    ...typography.body,
+    color: colors.textSecondary,
   },
   rowValue: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.text,
   },
-  bold: {
-    fontWeight: '700',
-    fontSize: 16,
+  rowValueBold: {
+    ...typography.title,
   },
   divider: {
     height: 1,
-    backgroundColor: '#eee',
-    marginVertical: 8,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
+  },
+  muted: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
   rowBtns: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 4,
+    gap: spacing.md,
+    paddingHorizontal: spacing.xl,
   },
-  primaryBtn: {
-    backgroundColor: '#2e7d32',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 16,
+  rowBtn: {
     flex: 1,
   },
-  primaryBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
+  closeBtn: {
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.lg,
   },
-  secondaryBtn: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2e7d32',
-    flex: 1,
-  },
-  secondaryBtnText: {
-    color: '#2e7d32',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  ghostBtn: {
-    marginTop: 12,
-    alignItems: 'center',
-    padding: 8,
-  },
-  ghostBtnText: {
-    color: '#2e7d32',
-    fontWeight: '600',
-  },
-  dangerBtn: {
-    backgroundColor: '#c62828',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  dangerBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  btnDisabled: {
-    opacity: 0.6,
+  submit: {
+    marginTop: spacing.md,
   },
   modalOverlay: {
     flex: 1,
@@ -462,14 +423,15 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: 20,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.xl,
+    paddingBottom: spacing.huge,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
+    ...typography.title,
+    color: colors.text,
+    marginBottom: spacing.lg,
   },
 });

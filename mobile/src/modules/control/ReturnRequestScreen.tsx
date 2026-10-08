@@ -1,7 +1,7 @@
 /**
- * Sale return request screen: per-item return qty (validated against the
- * sold qty) with a SELLABLE/DAMAGED condition per line and a mandatory
- * reason. Submits to POST /sales/{id}/returns.
+ * Sale return request — modern minimalist.
+ * Per-item return qty (validated vs sold qty), SELLABLE/DAMAGED condition
+ * chips, mandatory reason. Submits to POST /sales/{id}/returns.
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -11,7 +11,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -22,6 +21,8 @@ import {
   ReturnLineRequest,
 } from '../../services/controlApi';
 import { formatRupiah } from '../../stores/cartStore';
+import { Badge, Button, Card, EmptyState, Input, ScreenHeader } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'ReturnRequest'>;
 
@@ -137,7 +138,7 @@ export default function ReturnRequestScreen({ navigation, route }: Props) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.muted}>Memuat transaksi…</Text>
       </View>
     );
@@ -145,40 +146,52 @@ export default function ReturnRequestScreen({ navigation, route }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Transaksi {invoiceNo}</Text>
-      <TextInput
-        style={styles.reasonInput}
-        value={reason}
-        onChangeText={setReason}
-        placeholder="Alasan retur (wajib)"
-      />
+      <ScreenHeader title="Ajukan Retur" subtitle={`Transaksi ${invoiceNo}`} />
+      <View style={styles.reasonWrap}>
+        <Input
+          label="Alasan retur (wajib)"
+          value={reason}
+          onChangeText={setReason}
+          placeholder="cth. Barang cacat / salah ukuran"
+          editable={!submitting}
+        />
+      </View>
       <FlatList
         data={items}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={styles.muted}>
-            Tidak ada item yang bisa diretur pada transaksi ini.
-          </Text>
+          <EmptyState
+            title="Tidak ada item"
+            message="Tidak ada item yang bisa diretur pada transaksi ini."
+            icon="↩️"
+          />
         }
         renderItem={({ item }) => {
           const cond = conditions[item.id] ?? 'SELLABLE';
+          const valid = parseQty(qtyTexts[item.id] ?? '', item.qty) !== null;
           return (
-            <View style={styles.card}>
-              <Text style={styles.name} numberOfLines={1}>
-                {item.name}
-              </Text>
+            <Card>
+              <View style={styles.itemHeader}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                {valid ? (
+                  <Badge label={`Retur ${qtyTexts[item.id]}`} tone="accent" />
+                ) : null}
+              </View>
               <Text style={styles.meta}>
                 Terjual {item.qty} × {formatRupiah(item.unitPrice)}
               </Text>
-              <TextInput
-                style={styles.qtyInput}
+              <Input
                 value={qtyTexts[item.id] ?? ''}
                 onChangeText={text =>
                   setQtyTexts(prev => ({ ...prev, [item.id]: text }))
                 }
                 keyboardType="decimal-pad"
                 placeholder={`Qty retur (maks ${item.qty})`}
+                containerStyle={styles.qtyInput}
+                editable={!submitting}
               />
               <View style={styles.condRow}>
                 {CONDITIONS.map(c => (
@@ -201,21 +214,17 @@ export default function ReturnRequestScreen({ navigation, route }: Props) {
                   </Pressable>
                 ))}
               </View>
-            </View>
+            </Card>
           );
         }}
       />
       <View style={styles.footer}>
-        <Pressable
-          style={[styles.primaryBtn, submitting && styles.btnDisabled]}
+        <Button
+          title={submitting ? 'Mengirim…' : `Ajukan Retur (${filledLines.length})`}
           onPress={() => void doSubmit()}
-          disabled={submitting}>
-          <Text style={styles.primaryBtnText}>
-            {submitting
-              ? 'Mengirim…'
-              : `Ajukan Retur (${filledLines.length})`}
-          </Text>
-        </Pressable>
+          loading={submitting}
+          size="lg"
+        />
       </View>
     </View>
   );
@@ -224,92 +233,74 @@ export default function ReturnRequestScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    backgroundColor: colors.background,
+    padding: spacing.xxl,
   },
   muted: {
-    color: '#666',
-    marginTop: 8,
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    margin: 16,
-    marginBottom: 8,
-  },
-  reasonInput: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    marginHorizontal: 16,
-    marginBottom: 8,
+  reasonWrap: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.sm,
   },
   list: {
-    padding: 16,
-    paddingTop: 4,
-    paddingBottom: 90,
+    padding: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: 110,
+    flexGrow: 1,
+    gap: spacing.md,
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+  itemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
   },
   name: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.text,
+    flex: 1,
+    marginRight: spacing.sm,
   },
   meta: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
+    ...typography.caption,
+    color: colors.textMuted,
   },
   qtyInput: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    marginTop: 8,
-    textAlign: 'right',
+    marginTop: spacing.md,
+    marginBottom: 0,
   },
   condRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
   condChip: {
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
     borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   condChipActive: {
-    backgroundColor: '#1565c0',
-    borderColor: '#1565c0',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   condText: {
-    fontSize: 13,
-    color: '#555',
+    ...typography.small,
+    color: colors.textSecondary,
   },
   condTextActive: {
-    color: '#fff',
+    color: colors.white,
     fontWeight: '600',
   },
   footer: {
@@ -317,23 +308,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    padding: 16,
-    backgroundColor: '#fff',
+    padding: spacing.xl,
+    paddingBottom: spacing.xxl,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  primaryBtn: {
-    backgroundColor: '#2e7d32',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-  },
-  primaryBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  btnDisabled: {
-    opacity: 0.6,
+    borderTopColor: colors.border,
   },
 });

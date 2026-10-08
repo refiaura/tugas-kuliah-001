@@ -1,5 +1,5 @@
 /**
- * Stock movement history (read-only ledger).
+ * Stock movement history — modern minimalist (read-only ledger).
  *
  * - Lists all movements newest-first (stock.view).
  * - Optional product filter via searchable product picker.
@@ -14,7 +14,6 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import {
@@ -23,6 +22,8 @@ import {
   StockMovement,
 } from '../../services/stockApi';
 import { listProducts, ProductResponse } from '../../services/productApi';
+import { Badge, Card, EmptyState, Input, ScreenHeader } from '../../components';
+import { colors, spacing, typography } from '../../theme';
 
 const PAGE_SIZE = 50;
 
@@ -132,19 +133,15 @@ export default function StockHistoryScreen() {
   const renderItem = ({ item }: { item: StockMovement }) => {
     const positive = item.qtyChange >= 0;
     return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
+      <Card style={styles.item} padding={spacing.lg}>
+        <View style={styles.itemHeader}>
           <Text style={styles.name} numberOfLines={1}>
             {item.productName}
           </Text>
-          <Text
-            style={[
-              styles.qty,
-              positive ? styles.qtyIn : styles.qtyOut,
-            ]}>
-            {positive ? '+' : ''}
-            {formatQty(item.qtyChange)}
-          </Text>
+          <Badge
+            label={`${positive ? '+' : ''}${formatQty(item.qtyChange)}`}
+            tone={positive ? 'accent' : 'danger'}
+          />
         </View>
         <Text style={styles.meta}>
           {item.movementType}
@@ -155,80 +152,94 @@ export default function StockHistoryScreen() {
           {formatDate(item.createdAt)}
           {item.createdBy ? ` · ${item.createdBy}` : ''}
         </Text>
-      </View>
+      </Card>
     );
   };
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.muted}>Memuat riwayat stok…</Text>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.centerText}>Memuat riwayat stok…</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.filterBox}>
-        <TextInput
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Filter per produk… (ketik nama / SKU)"
-        />
-        {searching && <ActivityIndicator style={{ marginTop: 6 }} />}
-        {!searching && search.trim().length >= 2 && results.length > 0 && (
-          <FlatList
-            data={results}
-            keyExtractor={item => String(item.id)}
-            scrollEnabled={false}
-            style={styles.pickerList}
-            renderItem={({ item }) => (
-              <Pressable
-                style={styles.pickerItem}
-                onPress={() => {
-                  setFilter(item);
-                  setSearch('');
-                  setResults([]);
-                }}>
-                <Text style={styles.pickerName} numberOfLines={1}>
-                  {item.name}
-                </Text>
-              </Pressable>
-            )}
-          />
-        )}
-        {filter && (
-          <View style={styles.activeFilter}>
-            <Text style={styles.activeFilterText}>
-              Filter: {filter.name}
-            </Text>
-            <Pressable onPress={() => setFilter(null)}>
-              <Text style={styles.clearFilter}>✕ Hapus</Text>
-            </Pressable>
-          </View>
-        )}
-      </View>
-
       <FlatList
         data={items}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={styles.list}
+        ListHeaderComponent={
+          <>
+            <ScreenHeader
+              title="Riwayat Stok"
+              subtitle="Ledger pergerakan stok — read-only."
+              style={styles.header}
+            />
+            <Input
+              label="Filter per produk"
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Ketik nama / SKU…"
+            />
+            {searching && <ActivityIndicator color={colors.primary} />}
+            {!searching && search.trim().length >= 2 && results.length > 0 && (
+              <FlatList
+                data={results}
+                keyExtractor={item => String(item.id)}
+                scrollEnabled={false}
+                style={styles.pickerList}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={styles.pickerItem}
+                    onPress={() => {
+                      setFilter(item);
+                      setSearch('');
+                      setResults([]);
+                    }}>
+                    <Text style={styles.pickerName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                  </Pressable>
+                )}
+              />
+            )}
+            {filter && (
+              <Card style={styles.activeFilter} padding={spacing.md}>
+                <Text style={styles.activeFilterText} numberOfLines={1}>
+                  {filter.name}
+                </Text>
+                <Pressable onPress={() => setFilter(null)}>
+                  <Text style={styles.clearFilter}>Hapus ✕</Text>
+                </Pressable>
+              </Card>
+            )}
+          </>
+        }
         renderItem={renderItem}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
         }
         onEndReached={() => void onLoadMore()}
         onEndReachedThreshold={0.5}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            Belum ada pergerakan stok.
-          </Text>
+          <EmptyState
+            title="Belum ada pergerakan"
+            message="Belum ada pergerakan stok tercatat."
+          />
         }
         ListFooterComponent={
           loadingMore ? (
-            <ActivityIndicator style={{ marginVertical: 16 }} />
+            <ActivityIndicator
+              color={colors.primary}
+              style={{ marginVertical: spacing.lg }}
+            />
           ) : undefined
         }
       />
@@ -239,114 +250,84 @@ export default function StockHistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    backgroundColor: colors.background,
+    padding: spacing.xxl,
   },
-  muted: {
-    color: '#666',
-    marginTop: 8,
+  centerText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
   },
-  filterBox: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+  header: {
+    paddingHorizontal: 0,
+    paddingTop: 0,
   },
-  searchInput: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
+  list: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.huge,
   },
   pickerList: {
     maxHeight: 180,
-    marginTop: 4,
+    marginBottom: spacing.sm,
   },
   pickerItem: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 6,
+    backgroundColor: colors.surface,
+    borderRadius: spacing.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
   },
   pickerName: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.text,
   },
   activeFilter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#e8f5e9',
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 8,
+    marginBottom: spacing.md,
+    borderColor: colors.primarySoft,
   },
   activeFilterText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2e7d32',
+    ...typography.bodyBold,
+    color: colors.primaryDark,
     flex: 1,
+    marginRight: spacing.sm,
   },
   clearFilter: {
-    color: '#c62828',
+    ...typography.small,
+    color: colors.danger[600],
     fontWeight: '600',
-    fontSize: 14,
   },
-  list: {
-    padding: 16,
-    paddingTop: 8,
+  item: {
+    marginBottom: spacing.md,
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-  },
-  cardHeader: {
+  itemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.sm,
   },
   name: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.text,
     flex: 1,
-  },
-  qty: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  qtyIn: {
-    color: '#2e7d32',
-  },
-  qtyOut: {
-    color: '#c62828',
+    marginRight: spacing.sm,
   },
   meta: {
-    fontSize: 12,
-    color: '#555',
+    ...typography.caption,
+    color: colors.textSecondary,
   },
   metaLight: {
-    fontSize: 12,
-    color: '#888',
+    ...typography.caption,
+    color: colors.textMuted,
     marginTop: 2,
-  },
-  emptyText: {
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 32,
   },
 });

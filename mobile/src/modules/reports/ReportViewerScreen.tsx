@@ -1,12 +1,11 @@
 /**
- * Viewer generik untuk 6 jenis laporan.
+ * Viewer generik untuk 6 jenis laporan — modern minimalist.
  * Filter: rentang tanggal (7 hari terakhir default). Paged untuk sales & purchases.
  */
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -34,6 +33,8 @@ import {
 } from '../../services/reportApi';
 import { ReportKind } from './ReportsScreen';
 import { PageInfo } from '../../types/api';
+import { Badge, Card, EmptyState } from '../../components';
+import { colors, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'ReportViewer'>;
 
@@ -49,9 +50,11 @@ function RowCard({ item }: { item: Row }) {
     case 'sales': {
       const r = item.row;
       return (
-        <View style={styles.card}>
+        <Card>
           <View style={styles.rowBetween}>
-            <Text style={styles.bold}>{r.invoiceNo}</Text>
+            <Text style={styles.bold} numberOfLines={1}>
+              {r.invoiceNo}
+            </Text>
             <Text style={styles.total}>{formatRupiah(r.grandTotal)}</Text>
           </View>
           <Text style={styles.meta}>
@@ -61,50 +64,60 @@ function RowCard({ item }: { item: Row }) {
           <Text style={styles.meta}>
             Diskon {formatRupiah(r.discountTotal)} · Status {r.status}
           </Text>
-        </View>
+        </Card>
       );
     }
     case 'products': {
       const r = item.row;
       return (
-        <View style={styles.card}>
+        <Card>
           <View style={styles.rowBetween}>
-            <Text style={styles.bold}>{r.productName}</Text>
+            <Text style={styles.bold} numberOfLines={1}>
+              {r.productName}
+            </Text>
             <Text style={styles.total}>{formatRupiah(r.netSales)}</Text>
           </View>
           <Text style={styles.meta}>{r.sku}</Text>
           <Text style={styles.meta}>
             Terjual {r.qtySold} · Retur {r.returnQty} · Diskon {formatRupiah(r.discount)}
           </Text>
-        </View>
+        </Card>
       );
     }
     case 'inventory': {
       const r = item.row;
       return (
-        <View style={styles.card}>
+        <Card>
           <View style={styles.rowBetween}>
-            <Text style={styles.bold}>{r.productName}</Text>
+            <Text style={styles.bold} numberOfLines={1}>
+              {r.productName}
+            </Text>
             <Text style={styles.total}>Stok {r.currentStock}</Text>
           </View>
           <Text style={styles.meta}>{r.sku}</Text>
           <Text style={styles.meta}>
             Awal {r.openingStock} · Masuk {r.inQty} · Keluar {r.outQty} · Adj {r.adjustmentQty}
           </Text>
-        </View>
+        </Card>
       );
     }
     case 'cash': {
       const r = item.row;
+      const hasVariance = (r.variance ?? 0) !== 0;
       return (
-        <View style={styles.card}>
+        <Card>
           <View style={styles.rowBetween}>
-            <Text style={styles.bold}>{r.shiftNo}</Text>
-            <Text style={[styles.total, (r.variance ?? 0) !== 0 && styles.warn]}>
-              {r.variance === null || r.variance === undefined
-                ? 'Aktif'
-                : `Selisih ${formatRupiah(r.variance)}`}
+            <Text style={styles.bold} numberOfLines={1}>
+              {r.shiftNo}
             </Text>
+            {r.variance === null || r.variance === undefined ? (
+              <Badge label="Aktif" tone="accent" />
+            ) : (
+              <Badge
+                label={`Selisih ${formatRupiah(r.variance)}`}
+                tone={hasVariance ? 'danger' : 'neutral'}
+              />
+            )}
           </View>
           <Text style={styles.meta}>
             {r.cashierName ?? '-'} · Buka {formatDateTime(r.openedAt)}
@@ -116,15 +129,17 @@ function RowCard({ item }: { item: Row }) {
               ? ` · Aktual ${formatRupiah(r.actualCash)}`
               : ''}
           </Text>
-        </View>
+        </Card>
       );
     }
     case 'purchases': {
       const r = item.row;
       return (
-        <View style={styles.card}>
+        <Card>
           <View style={styles.rowBetween}>
-            <Text style={styles.bold}>{r.poNumber}</Text>
+            <Text style={styles.bold} numberOfLines={1}>
+              {r.poNumber}
+            </Text>
             <Text style={styles.total}>{formatRupiah(r.total)}</Text>
           </View>
           <Text style={styles.meta}>
@@ -133,7 +148,7 @@ function RowCard({ item }: { item: Row }) {
           <Text style={styles.meta}>
             Terima: {r.receivedStatus} · Bayar: {r.paymentStatus}
           </Text>
-        </View>
+        </Card>
       );
     }
   }
@@ -210,7 +225,7 @@ export default function ReportViewerScreen({ route }: Props) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -218,7 +233,7 @@ export default function ReportViewerScreen({ route }: Props) {
   if (error && rows.length === 0 && !profit) {
     return (
       <View style={styles.center}>
-        <Text style={styles.error}>{error}</Text>
+        <EmptyState title="Gagal memuat" message={error} icon="⚠" />
       </View>
     );
   }
@@ -226,26 +241,28 @@ export default function ReportViewerScreen({ route }: Props) {
   if (kind === 'profit') {
     return (
       <View style={styles.container}>
-        <View style={styles.profitCard}>
-          <View style={styles.profitRow}>
-            <Text style={styles.profitLabel}>Penjualan Bersih</Text>
-            <Text style={styles.profitValue}>{formatRupiah(profit?.netSales)}</Text>
-          </View>
-          <View style={styles.profitRow}>
-            <Text style={styles.profitLabel}>HPP</Text>
-            <Text style={styles.profitValue}>({formatRupiah(profit?.cogs)})</Text>
-          </View>
-          <View style={[styles.profitRow, styles.profitTotal]}>
-            <Text style={styles.profitLabelBold}>Laba Kotor</Text>
-            <Text style={styles.profitValueBold}>{formatRupiah(profit?.grossProfit)}</Text>
-          </View>
-          {profit?.cogsEstimated ? (
-            <Text style={styles.estimateNote}>
-              * HPP estimasi: ada produk tanpa harga pokok.
-            </Text>
-          ) : null}
+        <View style={styles.profitWrap}>
+          <Card style={styles.profitCard}>
+            <View style={styles.profitRow}>
+              <Text style={styles.profitLabel}>Penjualan Bersih</Text>
+              <Text style={styles.profitValue}>{formatRupiah(profit?.netSales)}</Text>
+            </View>
+            <View style={styles.profitRow}>
+              <Text style={styles.profitLabel}>HPP</Text>
+              <Text style={styles.profitValue}>({formatRupiah(profit?.cogs)})</Text>
+            </View>
+            <View style={[styles.profitRow, styles.profitTotal]}>
+              <Text style={styles.profitLabelBold}>Laba Kotor</Text>
+              <Text style={styles.profitValueBold}>{formatRupiah(profit?.grossProfit)}</Text>
+            </View>
+            {profit?.cogsEstimated ? (
+              <Text style={styles.estimateNote}>
+                * HPP estimasi: ada produk tanpa harga pokok.
+              </Text>
+            ) : null}
+          </Card>
+          <Text style={styles.rangeNote}>Periode 7 hari terakhir</Text>
         </View>
-        <Text style={styles.rangeNote}>Periode 7 hari terakhir</Text>
       </View>
     );
   }
@@ -256,12 +273,20 @@ export default function ReportViewerScreen({ route }: Props) {
         data={rows}
         keyExtractor={(_, i) => `${kind}-${i}`}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text style={styles.empty}>Tidak ada data.</Text>}
+        ListEmptyComponent={
+          <EmptyState
+            title="Tidak ada data"
+            message="Belum ada data laporan pada periode ini."
+            icon="📊"
+          />
+        }
         renderItem={({ item }) => <RowCard item={item} />}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         ListFooterComponent={
-          loadingMore ? <ActivityIndicator style={{ margin: 12 }} /> : undefined
+          loadingMore ? (
+            <ActivityIndicator style={styles.loadMore} color={colors.primary} />
+          ) : undefined
         }
       />
     </View>
@@ -269,34 +294,90 @@ export default function ReportViewerScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  error: { color: '#c62828', textAlign: 'center' },
-  empty: { color: '#666', textAlign: 'center', marginTop: 40 },
-  list: { padding: 16 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  bold: { fontWeight: '600', fontSize: 15, flex: 1 },
-  total: { fontWeight: '700', fontSize: 15 },
-  warn: { color: '#c62828' },
-  meta: { color: '#666', fontSize: 13, marginTop: 3 },
-  profitCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, margin: 16 },
-  profitRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 },
-  profitTotal: { borderTopWidth: 1, borderTopColor: '#eee', marginTop: 4, paddingTop: 12 },
-  profitLabel: { fontSize: 15, color: '#444' },
-  profitValue: { fontSize: 15 },
-  profitLabelBold: { fontSize: 16, fontWeight: '700' },
-  profitValueBold: { fontSize: 16, fontWeight: '700' },
-  estimateNote: { fontSize: 12, color: '#e65100', marginTop: 8, fontStyle: 'italic' },
-  rangeNote: { textAlign: 'center', color: '#999', fontSize: 12 },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    padding: spacing.xxl,
+  },
+  list: {
+    padding: spacing.xl,
+    flexGrow: 1,
+    gap: spacing.md,
+  },
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  bold: {
+    ...typography.bodyBold,
+    color: colors.text,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  total: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  meta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  loadMore: {
+    margin: spacing.md,
+  },
+  profitWrap: {
+    padding: spacing.xl,
+  },
+  profitCard: {
+    padding: spacing.xl,
+  },
+  profitRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  profitTotal: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    marginTop: spacing.sm,
+    paddingTop: spacing.lg,
+  },
+  profitLabel: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  profitValue: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  profitLabelBold: {
+    ...typography.subtitle,
+    color: colors.text,
+  },
+  profitValueBold: {
+    ...typography.title,
+    color: colors.primary,
+  },
+  estimateNote: {
+    ...typography.caption,
+    color: colors.warning[600],
+    marginTop: spacing.sm,
+    fontStyle: 'italic',
+  },
+  rangeNote: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+  },
 });

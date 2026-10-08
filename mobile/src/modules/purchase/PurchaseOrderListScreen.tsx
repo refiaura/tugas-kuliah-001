@@ -1,8 +1,6 @@
 /**
- * PO list screen with a status filter.
- *
- * Tapping a row opens PurchaseOrderDetail; a "+" button (purchase.create)
- * opens the PO form.
+ * PO list — modern minimalist.
+ * Filter chips, Card rows with status Badge, EmptyState, accent FAB.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -24,6 +22,8 @@ import {
   poStatusLabel,
   PurchaseOrder,
 } from '../../services/purchaseApi';
+import { Badge, Card, EmptyState, ScreenHeader } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'PurchaseOrderList'>;
 
@@ -37,6 +37,25 @@ const FILTERS: (string | null)[] = [
   'RECEIVED',
   'CANCELLED',
 ];
+
+function poTone(status: string): 'neutral' | 'accent' | 'danger' | 'warning' | 'info' {
+  switch (status) {
+    case 'DRAFT':
+      return 'neutral';
+    case 'SUBMITTED':
+      return 'warning';
+    case 'APPROVED':
+      return 'info';
+    case 'ORDERED':
+    case 'PARTIALLY_RECEIVED':
+    case 'RECEIVED':
+      return 'accent';
+    case 'CANCELLED':
+      return 'danger';
+    default:
+      return 'neutral';
+  }
+}
 
 export default function PurchaseOrderListScreen({ navigation }: Props) {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
@@ -73,45 +92,48 @@ export default function PurchaseOrderListScreen({ navigation }: Props) {
 
   const renderItem = ({ item }: { item: PurchaseOrder }) => (
     <Pressable
-      style={styles.card}
       onPress={() => navigation.navigate('PurchaseOrderDetail', { poId: item.id })}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.docNo}>{item.docNo}</Text>
-        <Text style={styles.status}>{poStatusLabel(item.status)}</Text>
-      </View>
-      <Text style={styles.supplier}>{item.supplierName}</Text>
-      <Text style={styles.meta}>
-        {item.lines.length} baris · Rp{formatMoney(item.totalAmount)}
-      </Text>
+      <Card style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.docNo}>{item.docNo}</Text>
+          <Badge label={poStatusLabel(item.status)} tone={poTone(item.status)} />
+        </View>
+        <Text style={styles.supplier}>{item.supplierName}</Text>
+        <Text style={styles.meta}>
+          {item.lines.length} baris · Rp{formatMoney(item.totalAmount)}
+        </Text>
+      </Card>
     </Pressable>
   );
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Purchase Order" subtitle="Daftar pesanan ke supplier" />
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.filterRow}
         contentContainerStyle={styles.filterContent}>
-        {FILTERS.map(f => (
-          <Pressable
-            key={f ?? 'ALL'}
-            style={[styles.filterChip, filter === f && styles.filterChipActive]}
-            onPress={() => setFilter(f)}>
-            <Text
-              style={[
-                styles.filterText,
-                filter === f && styles.filterTextActive,
-              ]}>
-              {f === null ? 'Semua' : poStatusLabel(f)}
-            </Text>
-          </Pressable>
-        ))}
+        {FILTERS.map(f => {
+          const active = filter === f;
+          return (
+            <Pressable
+              key={f ?? 'ALL'}
+              style={[styles.filterChip, active && styles.filterChipActive]}
+              onPress={() => setFilter(f)}>
+              <Text
+                style={[styles.filterText, active && styles.filterTextActive]}>
+                {f === null ? 'Semua' : poStatusLabel(f)}
+              </Text>
+            </Pressable>
+          );
+        })}
       </ScrollView>
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -120,7 +142,10 @@ export default function PurchaseOrderListScreen({ navigation }: Props) {
           contentContainerStyle={styles.list}
           renderItem={renderItem}
           ListEmptyComponent={
-            <Text style={styles.empty}>Tidak ada purchase order.</Text>
+            <EmptyState
+              title="Tidak ada purchase order"
+              message="PO dengan status ini belum tersedia."
+            />
           }
         />
       )}
@@ -139,7 +164,7 @@ export default function PurchaseOrderListScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   center: {
     flex: 1,
@@ -148,90 +173,72 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexGrow: 0,
-    paddingVertical: 8,
   },
   filterContent: {
-    paddingHorizontal: 16,
-    gap: 8,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
   },
   filterChip: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: colors.surface,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
   },
   filterChipActive: {
-    backgroundColor: '#2e7d32',
-    borderColor: '#2e7d32',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   filterText: {
-    fontSize: 13,
-    color: '#555',
+    ...typography.small,
+    color: colors.textSecondary,
   },
   filterTextActive: {
-    color: '#fff',
+    color: colors.white,
     fontWeight: '600',
   },
   list: {
-    padding: 16,
-    paddingTop: 4,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.huge,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    marginBottom: spacing.md,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   docNo: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  status: {
-    fontSize: 12,
-    color: '#2e7d32',
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.text,
   },
   supplier: {
-    fontSize: 14,
-    color: '#333',
+    ...typography.body,
+    color: colors.text,
   },
   meta: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
-  },
-  empty: {
-    textAlign: 'center',
-    color: '#888',
-    marginTop: 32,
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   fab: {
     position: 'absolute',
-    right: 20,
-    bottom: 24,
+    right: spacing.xl,
+    bottom: spacing.xl,
     width: 56,
     height: 56,
-    borderRadius: 28,
-    backgroundColor: '#2e7d32',
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
   },
   fabText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 28,
     lineHeight: 30,
   },

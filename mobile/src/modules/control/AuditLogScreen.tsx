@@ -1,6 +1,6 @@
 /**
- * Audit log screen (read-only): list of actor/action/entity changes with
- * an entity-type text filter (e.g. SALE, PRODUCT, USER).
+ * Audit log — modern minimalist.
+ * Read-only list of actor/action/entity changes with an entity-type filter.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -10,7 +10,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -20,6 +19,8 @@ import {
   listAuditLogs,
 } from '../../services/controlApi';
 import { PageInfo } from '../../types/api';
+import { Badge, Card, EmptyState, Input } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'AuditLog'>;
 
@@ -87,42 +88,50 @@ export default function AuditLogScreen({ navigation }: Props) {
   const currentPage = pagination?.page ?? page;
 
   const renderItem = ({ item }: { item: AuditLogResponse }) => (
-    <View style={styles.card}>
+    <Card>
       <View style={styles.cardHeader}>
-        <Text style={styles.action}>{item.action}</Text>
+        <Text style={styles.action} numberOfLines={1}>
+          {item.action}
+        </Text>
         <Text style={styles.time}>{formatDate(item.createdAt)}</Text>
       </View>
-      <Text style={styles.meta}>
-        {item.actor} · {item.entityType}#{item.entityId}
-      </Text>
+      <View style={styles.metaRow}>
+        <Text style={styles.meta} numberOfLines={1}>
+          {item.actor}
+        </Text>
+        <Badge label={item.entityType} tone="info" />
+      </View>
+      <Text style={styles.entityId}>#{item.entityId}</Text>
       {item.newValue ? (
         <Text style={styles.value} numberOfLines={3}>
           {item.newValue}
         </Text>
       ) : null}
-    </View>
+    </Card>
   );
 
   return (
     <View style={styles.container}>
       <View style={styles.filterBar}>
-        <TextInput
-          style={styles.filterInput}
+        <Input
           value={entityType}
           onChangeText={setEntityType}
-          placeholder="Filter entityType: SALE, PRODUCT, USER…"
+          placeholder="Filter: SALE, PRODUCT, USER…"
           autoCapitalize="characters"
           returnKeyType="search"
           onSubmitEditing={applyFilter}
+          containerStyle={styles.filterInput}
         />
-        <Pressable style={styles.filterBtn} onPress={applyFilter}>
+        <Pressable
+          style={({ pressed }) => [styles.filterBtn, pressed && styles.pressed]}
+          onPress={applyFilter}>
           <Text style={styles.filterBtnText}>Cari</Text>
         </Pressable>
       </View>
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <>
@@ -132,7 +141,11 @@ export default function AuditLogScreen({ navigation }: Props) {
             contentContainerStyle={styles.list}
             renderItem={renderItem}
             ListEmptyComponent={
-              <Text style={styles.empty}>Tidak ada audit log.</Text>
+              <EmptyState
+                title="Tidak ada audit log"
+                message="Belum ada aktivitas tercatat."
+                icon="📋"
+              />
             }
           />
           <View style={styles.pager}>
@@ -164,7 +177,7 @@ export default function AuditLogScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   center: {
     flex: 1,
@@ -173,100 +186,99 @@ const styles = StyleSheet.create({
   },
   filterBar: {
     flexDirection: 'row',
-    gap: 8,
-    padding: 16,
-    paddingBottom: 8,
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
   },
   filterInput: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    marginBottom: 0,
   },
   filterBtn: {
-    backgroundColor: '#1565c0',
-    borderRadius: 8,
-    paddingHorizontal: 18,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.xl,
+    minHeight: 52,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pressed: {
+    opacity: 0.85,
   },
   filterBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
+    ...typography.bodyBold,
+    color: colors.white,
   },
   list: {
-    padding: 16,
-    paddingTop: 4,
-    paddingBottom: 8,
+    padding: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
     flexGrow: 1,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    gap: spacing.md,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   action: {
-    fontSize: 15,
-    fontWeight: '700',
+    ...typography.bodyBold,
+    color: colors.text,
+    flex: 1,
+    marginRight: spacing.sm,
   },
   time: {
-    fontSize: 12,
-    color: '#888',
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   meta: {
-    fontSize: 13,
-    color: '#666',
+    ...typography.small,
+    color: colors.textSecondary,
+    flex: 1,
+  },
+  entityId: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   value: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 6,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 6,
-    padding: 8,
-  },
-  empty: {
-    textAlign: 'center',
-    color: '#888',
-    marginTop: 32,
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    backgroundColor: colors.slate[100],
+    borderRadius: radius.sm,
+    padding: spacing.sm,
   },
   pager: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: colors.border,
   },
   pageBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   pageBtnText: {
-    color: '#1565c0',
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.primary,
     fontSize: 14,
   },
   pageInfo: {
-    fontSize: 13,
-    color: '#666',
+    ...typography.caption,
+    color: colors.textSecondary,
   },
   btnDisabled: {
     opacity: 0.4,

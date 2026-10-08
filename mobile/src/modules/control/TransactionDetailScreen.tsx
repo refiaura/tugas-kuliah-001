@@ -1,7 +1,7 @@
 /**
- * Transaction detail screen: invoice header, items, payments, totals.
- * COMPLETED sales can be void-requested (sales.create) via a reason modal,
- * or routed to the sale-return form. VOIDED sales are shown read-only.
+ * Transaction detail — modern minimalist.
+ * Invoice header, items, payments, totals; void / return actions for
+ * COMPLETED sales, read-only banner for VOIDED.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -12,7 +12,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -21,6 +20,8 @@ import { useAuthStore } from '../../stores/authStore';
 import { getSale, SaleResponse } from '../../services/saleApi';
 import { requestVoid } from '../../services/controlApi';
 import { formatRupiah } from '../../stores/cartStore';
+import { Badge, Button, Card, Input } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'TransactionDetail'>;
 
@@ -36,6 +37,17 @@ function formatDate(iso: string | null): string {
     });
   } catch {
     return iso;
+  }
+}
+
+function statusMeta(status: string): { label: string; tone: 'accent' | 'danger' | 'neutral' } {
+  switch (status) {
+    case 'COMPLETED':
+      return { label: 'Selesai', tone: 'accent' };
+    case 'VOIDED':
+      return { label: 'Void', tone: 'danger' };
+    default:
+      return { label: status, tone: 'neutral' };
   }
 }
 
@@ -98,7 +110,7 @@ export default function TransactionDetailScreen({ navigation, route }: Props) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.muted}>Memuat transaksi…</Text>
       </View>
     );
@@ -115,30 +127,31 @@ export default function TransactionDetailScreen({ navigation, route }: Props) {
   const isVoided = sale.status === 'VOIDED';
   const isCompleted = sale.status === 'COMPLETED';
   const canRequest = hasPermission('sales.create');
+  const sm = statusMeta(sale.status);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.card}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}>
+      <Card>
         <View style={styles.cardHeader}>
-          <Text style={styles.invoice}>{sale.invoiceNo}</Text>
-          <Text
-            style={[
-              styles.status,
-              isVoided ? styles.statusVoided : styles.statusCompleted,
-            ]}>
-            {isVoided ? 'Void' : isCompleted ? 'Selesai' : sale.status}
+          <Text style={styles.invoice} numberOfLines={1}>
+            {sale.invoiceNo}
           </Text>
+          <Badge label={sm.label} tone={sm.tone} />
         </View>
         <Row label="Kasir" value={sale.cashierName ?? '-'} />
         <Row label="Pelanggan" value={sale.customerName ?? '-'} />
         <Row label="Selesai" value={formatDate(sale.completedAt)} />
         {sale.notes ? <Row label="Catatan" value={sale.notes} /> : null}
-      </View>
+      </Card>
 
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardTitle}>Item</Text>
-        {sale.items.map(item => (
-          <View key={item.id} style={styles.itemRow}>
+        {sale.items.map((item, idx) => (
+          <View
+            key={item.id}
+            style={[styles.itemRow, idx > 0 && styles.itemDivider]}>
             <View style={styles.itemInfo}>
               <Text style={styles.itemName} numberOfLines={1}>
                 {item.name}
@@ -153,9 +166,9 @@ export default function TransactionDetailScreen({ navigation, route }: Props) {
             <Text style={styles.itemTotal}>{formatRupiah(item.subtotal)}</Text>
           </View>
         ))}
-      </View>
+      </Card>
 
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardTitle}>Pembayaran</Text>
         {sale.payments.map((p, idx) => (
           <Row
@@ -171,65 +184,69 @@ export default function TransactionDetailScreen({ navigation, route }: Props) {
         <Row label="Total" value={formatRupiah(sale.grandTotal)} bold />
         <Row label="Dibayar" value={formatRupiah(sale.paidTotal)} />
         <Row label="Kembalian" value={formatRupiah(sale.changeAmount)} />
-      </View>
+      </Card>
 
       {isVoided && (
-        <View style={styles.voidBanner}>
+        <Card style={styles.voidBanner}>
           <Text style={styles.voidBannerText}>
             Transaksi ini telah di-void.
           </Text>
-        </View>
+        </Card>
       )}
 
       {isCompleted && canRequest && (
         <View style={styles.rowBtns}>
-          <Pressable
-            style={styles.dangerBtn}
-            onPress={() => setVoidVisible(true)}>
-            <Text style={styles.dangerBtnText}>Minta Void</Text>
-          </Pressable>
-          <Pressable
-            style={styles.secondaryBtn}
+          <Button
+            title="Minta Void"
+            variant="danger"
+            onPress={() => setVoidVisible(true)}
+            style={styles.flexBtn}
+          />
+          <Button
+            title="Ajukan Retur"
+            variant="secondary"
             onPress={() =>
               navigation.navigate('ReturnRequest', { saleId: sale.id })
-            }>
-            <Text style={styles.secondaryBtnText}>Ajukan Retur</Text>
-          </Pressable>
+            }
+            style={styles.flexBtn}
+          />
         </View>
       )}
 
       <Modal visible={voidVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setVoidVisible(false)}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
             <Text style={styles.modalTitle}>Minta Void</Text>
-            <Text style={styles.muted}>
+            <Text style={styles.modalDesc}>
               Permintaan void {sale.invoiceNo} akan dikirim ke approval inbox.
             </Text>
-            <Text style={styles.label}>Alasan (wajib)</Text>
-            <TextInput
-              style={styles.input}
+            <Input
+              label="Alasan (wajib)"
               value={voidReason}
               onChangeText={setVoidReason}
               placeholder="cth. Salah input item / pelanggan batal"
               multiline
+              editable={!voidSaving}
             />
             <View style={styles.rowBtns}>
-              <Pressable
-                style={styles.secondaryBtn}
-                onPress={() => setVoidVisible(false)}>
-                <Text style={styles.secondaryBtnText}>Batal</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.dangerBtn, voidSaving && styles.btnDisabled]}
+              <Button
+                title="Batal"
+                variant="ghost"
+                onPress={() => setVoidVisible(false)}
+                style={styles.flexBtn}
+              />
+              <Button
+                title={voidSaving ? 'Mengirim…' : 'Kirim Permintaan'}
+                variant="danger"
                 onPress={() => void doRequestVoid()}
-                disabled={voidSaving}>
-                <Text style={styles.dangerBtnText}>
-                  {voidSaving ? 'Mengirim…' : 'Kirim Permintaan'}
-                </Text>
-              </Pressable>
+                loading={voidSaving}
+                style={styles.flexBtn}
+              />
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </ScrollView>
   );
@@ -253,185 +270,131 @@ function Row({
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
-    padding: 16,
-    backgroundColor: '#f5f5f5',
+    padding: spacing.xl,
+    paddingBottom: spacing.huge,
+    gap: spacing.md,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    backgroundColor: colors.background,
+    padding: spacing.xxl,
   },
   muted: {
-    color: '#666',
-    marginBottom: 8,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.md,
   },
   invoice: {
-    fontSize: 17,
-    fontWeight: '700',
+    ...typography.title,
+    color: colors.text,
+    flex: 1,
+    marginRight: spacing.sm,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  status: {
-    fontSize: 12,
-    fontWeight: '700',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusCompleted: {
-    color: '#2e7d32',
-    backgroundColor: '#e8f5e9',
-  },
-  statusVoided: {
-    color: '#c62828',
-    backgroundColor: '#ffebee',
+    ...typography.subtitle,
+    color: colors.text,
+    marginBottom: spacing.md,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    paddingVertical: spacing.xs,
   },
   rowLabel: {
-    color: '#666',
-    fontSize: 14,
+    ...typography.body,
+    color: colors.textSecondary,
   },
   rowValue: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.text,
     flexShrink: 1,
     textAlign: 'right',
   },
   bold: {
-    fontWeight: '700',
-    fontSize: 16,
+    ...typography.title,
   },
   divider: {
     height: 1,
-    backgroundColor: '#eee',
-    marginVertical: 8,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
   },
   itemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingVertical: spacing.sm,
+  },
+  itemDivider: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   itemInfo: {
     flex: 1,
-    marginRight: 8,
+    marginRight: spacing.md,
   },
   itemName: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.text,
   },
   itemMeta: {
-    fontSize: 12,
-    color: '#888',
+    ...typography.caption,
+    color: colors.textMuted,
     marginTop: 2,
   },
   itemTotal: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.bodyBold,
+    color: colors.text,
   },
   voidBanner: {
-    backgroundColor: '#ffebee',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
+    backgroundColor: colors.danger[50],
+    borderColor: colors.danger[50],
+    alignItems: 'center',
   },
   voidBannerText: {
-    color: '#c62828',
-    fontWeight: '600',
-    textAlign: 'center',
+    ...typography.bodyBold,
+    color: colors.danger[600],
   },
   rowBtns: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 4,
+    gap: spacing.md,
+    marginTop: spacing.sm,
   },
-  dangerBtn: {
-    backgroundColor: '#c62828',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
+  flexBtn: {
     flex: 1,
-  },
-  dangerBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  secondaryBtn: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2e7d32',
-    flex: 1,
-  },
-  secondaryBtnText: {
-    color: '#2e7d32',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  btnDisabled: {
-    opacity: 0.6,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: 20,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.xxl,
+    paddingBottom: spacing.huge,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
+    ...typography.title,
+    color: colors.text,
+    marginBottom: spacing.sm,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    minHeight: 80,
-    textAlignVertical: 'top',
+  modalDesc: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
   },
 });

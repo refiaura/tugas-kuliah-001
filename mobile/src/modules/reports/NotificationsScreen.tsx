@@ -1,5 +1,6 @@
 /**
- * In-app notifications: daftar, tandai dibaca, unread count.
+ * In-app notifications — modern minimalist.
+ * Daftar, tandai dibaca, unread count.
  */
 import React, { useCallback, useState } from 'react';
 import {
@@ -21,6 +22,8 @@ import {
   markNotificationRead,
 } from '../../services/reportApi';
 import { PageInfo } from '../../types/api';
+import { Card, EmptyState, ScreenHeader } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 const TYPE_LABEL: Record<string, string> = {
   LOW_STOCK: 'Stok menipis',
@@ -29,6 +32,15 @@ const TYPE_LABEL: Record<string, string> = {
   SHIFT_VARIANCE: 'Selisih kas',
   SHIFT_OPEN: 'Shift',
   PO_PENDING: 'Pembelian',
+};
+
+const TYPE_TONE: Record<string, 'warning' | 'danger' | 'info' | 'accent' | 'neutral'> = {
+  LOW_STOCK: 'warning',
+  OUT_OF_STOCK: 'danger',
+  PENDING_APPROVAL: 'info',
+  SHIFT_VARIANCE: 'warning',
+  SHIFT_OPEN: 'info',
+  PO_PENDING: 'accent',
 };
 
 export default function NotificationsScreen() {
@@ -99,22 +111,27 @@ export default function NotificationsScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
+  const unreadCount = items.filter(i => !i.read).length;
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Notifikasi</Text>
-        <Pressable onPress={onReadAll} hitSlop={8}>
-          <Text style={styles.readAll}>Tandai semua dibaca</Text>
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title="Notifikasi"
+        subtitle={unreadCount > 0 ? `${unreadCount} belum dibaca` : 'Semua sudah dibaca'}
+        right={
+          <Pressable onPress={onReadAll} hitSlop={8}>
+            <Text style={styles.readAll}>Tandai dibaca</Text>
+          </Pressable>
+        }
+      />
       {error && items.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.error}>{error}</Text>
+          <EmptyState title="Gagal memuat" message={error} icon="⚠" />
         </View>
       ) : (
         <FlatList
@@ -128,25 +145,42 @@ export default function NotificationsScreen() {
                 setRefreshing(true);
                 void load(0, false);
               }}
+              tintColor={colors.primary}
             />
           }
-          ListEmptyComponent={<Text style={styles.empty}>Belum ada notifikasi.</Text>}
+          ListEmptyComponent={
+            <EmptyState
+              title="Belum ada notifikasi"
+              message="Notifikasi stok, approval, dan shift akan muncul di sini."
+              icon="🔔"
+            />
+          }
           onEndReached={loadMore}
           onEndReachedThreshold={0.5}
           ListFooterComponent={
-            loadingMore ? <ActivityIndicator style={{ margin: 12 }} /> : undefined
+            loadingMore ? (
+              <ActivityIndicator style={styles.loadMore} color={colors.primary} />
+            ) : undefined
           }
           renderItem={({ item }) => (
             <Pressable
-              style={[styles.card, !item.read && styles.unread]}
+              style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
               onPress={() => void onRead(item)}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.type}>{TYPE_LABEL[item.type] ?? item.type}</Text>
-                {!item.read && <View style={styles.dot} />}
-              </View>
-              <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.message}>{item.message}</Text>
-              <Text style={styles.time}>{formatDateTime(item.createdAt)}</Text>
+              <Card style={!item.read ? styles.unreadCard : undefined}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.type}>
+                    {TYPE_LABEL[item.type] ?? item.type}
+                  </Text>
+                  {!item.read && <View style={styles.dot} />}
+                </View>
+                <Text style={[styles.title, !item.read && styles.titleUnread]}>
+                  {item.title}
+                </Text>
+                <Text style={styles.message} numberOfLines={2}>
+                  {item.message}
+                </Text>
+                <Text style={styles.time}>{formatDateTime(item.createdAt)}</Text>
+              </Card>
             </Pressable>
           )}
         />
@@ -156,36 +190,73 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  error: { color: '#c62828', textAlign: 'center' },
-  empty: { color: '#666', textAlign: 'center', marginTop: 40 },
-  header: {
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    padding: spacing.xxl,
+  },
+  readAll: {
+    ...typography.bodyBold,
+    color: colors.primary,
+    fontSize: 14,
+  },
+  list: {
+    padding: spacing.xl,
+    paddingTop: spacing.sm,
+    flexGrow: 1,
+    gap: spacing.md,
+  },
+  pressable: {
+    // wrapper so Card keeps its own padding
+  },
+  pressed: {
+    opacity: 0.85,
+  },
+  unreadCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  rowBetween: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    paddingBottom: 8,
+    marginBottom: spacing.xs,
   },
-  headerTitle: { fontSize: 18, fontWeight: '700' },
-  readAll: { color: '#1565c0', fontSize: 14, fontWeight: '600' },
-  list: { padding: 16, paddingTop: 8 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+  type: {
+    ...typography.small,
+    color: colors.primary,
+    fontWeight: '600',
   },
-  unread: { borderLeftWidth: 4, borderLeftColor: '#1565c0' },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  type: { fontSize: 12, color: '#1565c0', fontWeight: '600' },
-  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#1565c0' },
-  title: { fontSize: 15, fontWeight: '600', marginTop: 4 },
-  message: { fontSize: 14, color: '#444', marginTop: 2 },
-  time: { fontSize: 12, color: '#999', marginTop: 6 },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
+  },
+  title: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  titleUnread: {
+    fontWeight: '700',
+  },
+  message: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  time: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: spacing.sm,
+  },
+  loadMore: {
+    margin: spacing.md,
+  },
 });

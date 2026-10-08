@@ -1,5 +1,5 @@
 /**
- * Stock opname screen.
+ * Stock opname screen — modern minimalist.
  *
  * - Loads current balances (stock.view) with a search box.
  * - The user inputs the physical count per product.
@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -24,6 +24,8 @@ import {
   StockBalance,
   submitOpname,
 } from '../../services/stockApi';
+import { Badge, Button, Card, EmptyState, Input, ScreenHeader } from '../../components';
+import { colors, spacing, typography } from '../../theme';
 
 function parseQty(text: string): number | null {
   const cleaned = text.replace(',', '.').replace(/[^0-9.\-]/g, '');
@@ -114,69 +116,88 @@ export default function StockOpnameScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.muted}>Memuat saldo stok…</Text>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.centerText}>Memuat saldo stok…</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Cari produk / SKU…"
-        />
-      </View>
-      <View style={styles.locationRow}>
-        <TextInput
-          style={styles.searchInput}
-          value={location}
-          onChangeText={setLocation}
-          placeholder="Lokasi (opsional)"
-        />
-      </View>
-
-      {result && (
-        <View style={styles.resultCard}>
-          <Text style={styles.resultTitle}>
-            Opname {result.docNo} tersimpan
-          </Text>
-          {result.lines.map((l, idx) => (
-            <Text key={idx} style={styles.resultLine}>
-              {l.productName ?? `#${l.productId}`}: {formatQty(l.expectedQty)}
-              {' → '}
-              {formatQty(l.countedQty)} (
-              {l.differenceQty >= 0 ? '+' : ''}
-              {formatQty(l.differenceQty)})
-            </Text>
-          ))}
-          <Pressable
-            style={styles.ghostBtn}
-            onPress={() => setResult(null)}>
-            <Text style={styles.ghostBtnText}>Tutup</Text>
-          </Pressable>
-        </View>
-      )}
-
       <FlatList
         data={filtered}
         keyExtractor={item => String(item.productId)}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.name} numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text style={styles.sku}>SKU: {item.sku}</Text>
+        ListHeaderComponent={
+          <>
+            <ScreenHeader
+              title="Stock Opname"
+              subtitle="Hitung fisik tiap produk, selisih tercatat otomatis."
+              style={styles.header}
+            />
+            <View style={styles.searchBlock}>
+              <Input
+                label="Cari produk"
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Nama produk / SKU…"
+              />
+              <Input
+                label="Lokasi"
+                value={location}
+                onChangeText={setLocation}
+                placeholder="Opsional"
+              />
             </View>
-            <View style={styles.cardRow}>
+            {result && (
+              <Card style={styles.resultCard}>
+                <View style={styles.resultHeader}>
+                  <Badge label="Tersimpan" tone="accent" />
+                  <Text style={styles.resultDoc}>{result.docNo}</Text>
+                </View>
+                <ScrollView style={styles.resultLines} nestedScrollEnabled>
+                  {result.lines.map((l, idx) => (
+                    <Text key={idx} style={styles.resultLine}>
+                      {l.productName ?? `#${l.productId}`}: {formatQty(l.expectedQty)}
+                      {' → '}
+                      {formatQty(l.countedQty)} (
+                      {l.differenceQty >= 0 ? '+' : ''}
+                      {formatQty(l.differenceQty)})
+                    </Text>
+                  ))}
+                </ScrollView>
+                <Button
+                  title="Tutup"
+                  variant="ghost"
+                  onPress={() => setResult(null)}
+                  style={styles.resultClose}
+                />
+              </Card>
+            )}
+          </>
+        }
+        ListEmptyComponent={
+          <EmptyState
+            title="Tidak ada produk"
+            message="Stok masih kosong atau kata kunci tidak cocok."
+          />
+        }
+        renderItem={({ item }) => (
+          <Card style={styles.item} padding={spacing.lg}>
+            <View style={styles.itemTop}>
+              <View style={styles.itemHead}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={styles.sku}>{item.sku}</Text>
+              </View>
+              {item.qty <= item.minimumStock && (
+                <Badge label="Menipis" tone="warning" />
+              )}
+            </View>
+            <View style={styles.itemRow}>
               <Text style={styles.stockLabel}>
                 Stok sistem: {formatQty(item.qty)}
-                {item.qty <= item.minimumStock ? ' ⚠️' : ''}
               </Text>
               <TextInput
                 style={styles.countInput}
@@ -186,23 +207,24 @@ export default function StockOpnameScreen() {
                 }
                 keyboardType="decimal-pad"
                 placeholder="Hitung fisik"
+                placeholderTextColor={colors.textMuted}
               />
             </View>
-          </View>
+          </Card>
         )}
       />
 
       <View style={styles.footer}>
-        <Pressable
-          style={[styles.primaryBtn, submitting && styles.btnDisabled]}
-          onPress={() => void doSubmit()}
-          disabled={submitting}>
-          <Text style={styles.primaryBtnText}>
-            {submitting
+        <Button
+          title={
+            submitting
               ? 'Menyimpan…'
-              : `Simpan Opname (${filledLines.length})`}
-          </Text>
-        </Pressable>
+              : `Simpan Opname (${filledLines.length})`
+          }
+          onPress={() => void doSubmit()}
+          loading={submitting}
+          size="lg"
+        />
       </View>
     </View>
   );
@@ -211,76 +233,97 @@ export default function StockOpnameScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    backgroundColor: colors.background,
+    padding: spacing.xxl,
   },
-  muted: {
-    color: '#666',
-    marginTop: 8,
+  centerText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
   },
-  searchRow: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-  },
-  locationRow: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  searchInput: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
+  header: {
+    paddingHorizontal: 0,
+    paddingTop: 0,
   },
   list: {
-    padding: 16,
-    paddingBottom: 90,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: 110,
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+  searchBlock: {
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
-  cardHeader: {
-    marginBottom: 8,
+  resultCard: {
+    marginBottom: spacing.md,
+    borderColor: colors.primarySoft,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  resultDoc: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  resultLines: {
+    maxHeight: 160,
+  },
+  resultLine: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  resultClose: {
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
+  },
+  item: {
+    marginBottom: spacing.md,
+  },
+  itemTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
+  },
+  itemHead: {
+    flex: 1,
+    marginRight: spacing.sm,
   },
   name: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.text,
   },
   sku: {
-    fontSize: 12,
-    color: '#888',
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
   },
-  cardRow: {
+  itemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   stockLabel: {
-    fontSize: 13,
-    color: '#555',
+    ...typography.caption,
+    color: colors.textSecondary,
   },
   countInput: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 15,
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
+    borderRadius: spacing.md,
+    padding: spacing.md,
+    ...typography.body,
+    color: colors.text,
     minWidth: 130,
     textAlign: 'right',
   },
@@ -289,48 +332,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    padding: 16,
-    backgroundColor: '#fff',
+    padding: spacing.xl,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  primaryBtn: {
-    backgroundColor: '#2e7d32',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-  },
-  primaryBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  btnDisabled: {
-    opacity: 0.6,
-  },
-  resultCard: {
-    backgroundColor: '#e8f5e9',
-    borderRadius: 12,
-    padding: 14,
-    margin: 16,
-    marginBottom: 0,
-  },
-  resultTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  resultLine: {
-    fontSize: 13,
-    color: '#333',
-  },
-  ghostBtn: {
-    marginTop: 8,
-    alignItems: 'center',
-    padding: 6,
-  },
-  ghostBtnText: {
-    color: '#2e7d32',
-    fontWeight: '600',
+    borderTopColor: colors.border,
   },
 });

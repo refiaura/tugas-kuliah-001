@@ -1,7 +1,7 @@
 /**
- * Approval inbox screen: pending approval requests (void / return), with
- * approve & reject actions behind approval.approve / approval.reject.
- * A decision note is optional and entered via a modal.
+ * Approval inbox — modern minimalist.
+ * Pending requests (void / return) with approve & reject behind
+ * approval.approve / approval.reject. Optional decision note via modal.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -13,7 +13,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -26,6 +25,8 @@ import {
   listApprovals,
   rejectApproval,
 } from '../../services/controlApi';
+import { Badge, Button, Card, EmptyState, Input } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'ApprovalInbox'>;
 
@@ -33,6 +34,19 @@ const FILTERS: (string | null)[] = ['PENDING', null];
 
 function filterLabel(f: string | null): string {
   return f === null ? 'Semua' : approvalStatusLabel(f);
+}
+
+function statusTone(status: string): 'warning' | 'accent' | 'danger' | 'neutral' {
+  switch (status) {
+    case 'PENDING':
+      return 'warning';
+    case 'APPROVED':
+      return 'accent';
+    case 'REJECTED':
+      return 'danger';
+    default:
+      return 'neutral';
+  }
 }
 
 function subjectTypeLabel(t: string): string {
@@ -136,16 +150,15 @@ export default function ApprovalInboxScreen({ navigation }: Props) {
   const renderItem = ({ item }: { item: ApprovalResponse }) => {
     const pending = item.status === 'PENDING';
     return (
-      <View style={styles.card}>
+      <Card>
         <View style={styles.cardHeader}>
-          <Text style={styles.subjectLabel}>{item.subjectLabel}</Text>
-          <Text
-            style={[
-              styles.status,
-              pending ? styles.statusPending : styles.statusDecided,
-            ]}>
-            {approvalStatusLabel(item.status)}
+          <Text style={styles.subjectLabel} numberOfLines={1}>
+            {item.subjectLabel}
           </Text>
+          <Badge
+            label={approvalStatusLabel(item.status)}
+            tone={statusTone(item.status)}
+          />
         </View>
         <Text style={styles.meta}>
           {subjectTypeLabel(item.subjectType)} · diajukan oleh{' '}
@@ -161,22 +174,23 @@ export default function ApprovalInboxScreen({ navigation }: Props) {
         {pending && (canApprove || canReject) && (
           <View style={styles.rowBtns}>
             {canApprove && (
-              <Pressable
-                style={styles.approveBtn}
-                onPress={() => openDecision(item, 'approve')}>
-                <Text style={styles.approveBtnText}>Setujui</Text>
-              </Pressable>
+              <Button
+                title="Setujui"
+                onPress={() => openDecision(item, 'approve')}
+                style={styles.flexBtn}
+              />
             )}
             {canReject && (
-              <Pressable
-                style={styles.rejectBtn}
-                onPress={() => openDecision(item, 'reject')}>
-                <Text style={styles.rejectBtnText}>Tolak</Text>
-              </Pressable>
+              <Button
+                title="Tolak"
+                variant="danger"
+                onPress={() => openDecision(item, 'reject')}
+                style={styles.flexBtn}
+              />
             )}
           </View>
         )}
-      </View>
+      </Card>
     );
   };
 
@@ -205,7 +219,7 @@ export default function ApprovalInboxScreen({ navigation }: Props) {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -214,59 +228,57 @@ export default function ApprovalInboxScreen({ navigation }: Props) {
           contentContainerStyle={styles.list}
           renderItem={renderItem}
           ListEmptyComponent={
-            <Text style={styles.empty}>
-              Tidak ada permintaan approval.
-            </Text>
+            <EmptyState
+              title="Tidak ada permintaan"
+              message="Belum ada permintaan approval."
+              icon="✅"
+            />
           }
         />
       )}
 
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setModalVisible(false)}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
             <Text style={styles.modalTitle}>
               {action === 'approve' ? 'Setujui' : 'Tolak'} permintaan
             </Text>
-            <Text style={styles.muted}>
+            <Text style={styles.modalDesc}>
               {target?.subjectLabel} — diajukan oleh {target?.requestedBy}
             </Text>
-            <Text style={styles.label}>Catatan keputusan (opsional)</Text>
-            <TextInput
-              style={styles.input}
+            <Input
+              label="Catatan keputusan (opsional)"
               value={note}
               onChangeText={setNote}
               placeholder="cth. Disetujui, dana dikembalikan tunai"
               multiline
+              editable={!saving}
             />
             <View style={styles.rowBtns}>
-              <Pressable
-                style={styles.secondaryBtn}
-                onPress={() => setModalVisible(false)}>
-                <Text style={styles.secondaryBtnText}>Batal</Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  action === 'approve' ? styles.approveBtn : styles.rejectBtn,
-                  saving && styles.btnDisabled,
-                ]}
-                onPress={() => void doDecide()}
-                disabled={saving}>
-                <Text
-                  style={
-                    action === 'approve'
-                      ? styles.approveBtnText
-                      : styles.rejectBtnText
-                  }>
-                  {saving
+              <Button
+                title="Batal"
+                variant="ghost"
+                onPress={() => setModalVisible(false)}
+                style={styles.flexBtn}
+              />
+              <Button
+                title={
+                  saving
                     ? 'Menyimpan…'
                     : action === 'approve'
                       ? 'Setujui'
-                      : 'Tolak'}
-                </Text>
-              </Pressable>
+                      : 'Tolak'
+                }
+                variant={action === 'approve' ? 'primary' : 'danger'}
+                onPress={() => void doDecide()}
+                loading={saving}
+                style={styles.flexBtn}
+              />
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );
@@ -275,186 +287,103 @@ export default function ApprovalInboxScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  muted: {
-    color: '#666',
-    marginBottom: 8,
-  },
   filterRow: {
     flexGrow: 0,
-    paddingVertical: 8,
   },
   filterContent: {
-    paddingHorizontal: 16,
-    gap: 8,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
   },
   filterChip: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: colors.surface,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
   },
   filterChipActive: {
-    backgroundColor: '#1565c0',
-    borderColor: '#1565c0',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   filterText: {
-    fontSize: 13,
-    color: '#555',
+    ...typography.small,
+    color: colors.textSecondary,
   },
   filterTextActive: {
-    color: '#fff',
+    color: colors.white,
     fontWeight: '600',
   },
   list: {
-    padding: 16,
-    paddingTop: 4,
+    padding: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
     flexGrow: 1,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    gap: spacing.md,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   subjectLabel: {
-    fontSize: 15,
-    fontWeight: '700',
+    ...typography.bodyBold,
+    color: colors.text,
     flex: 1,
-    marginRight: 8,
-  },
-  status: {
-    fontSize: 12,
-    fontWeight: '700',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusPending: {
-    color: '#ef6c00',
-    backgroundColor: '#fff3e0',
-  },
-  statusDecided: {
-    color: '#555',
-    backgroundColor: '#f0f0f0',
+    marginRight: spacing.sm,
   },
   meta: {
-    fontSize: 12,
-    color: '#888',
+    ...typography.caption,
+    color: colors.textMuted,
   },
   reason: {
-    fontSize: 14,
-    color: '#333',
-    marginTop: 6,
+    ...typography.body,
+    color: colors.text,
+    marginTop: spacing.sm,
   },
   decisionMeta: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 6,
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
     fontStyle: 'italic',
   },
   rowBtns: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
+    gap: spacing.md,
+    marginTop: spacing.lg,
   },
-  approveBtn: {
-    backgroundColor: '#2e7d32',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
+  flexBtn: {
     flex: 1,
-  },
-  approveBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  rejectBtn: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#c62828',
-    flex: 1,
-  },
-  rejectBtnText: {
-    color: '#c62828',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  secondaryBtn: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1565c0',
-    flex: 1,
-  },
-  secondaryBtnText: {
-    color: '#1565c0',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  btnDisabled: {
-    opacity: 0.6,
-  },
-  empty: {
-    textAlign: 'center',
-    color: '#888',
-    marginTop: 32,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: 20,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.xxl,
+    paddingBottom: spacing.huge,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
+    ...typography.title,
+    color: colors.text,
+    marginBottom: spacing.sm,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    minHeight: 80,
-    textAlignVertical: 'top',
+  modalDesc: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
   },
 });

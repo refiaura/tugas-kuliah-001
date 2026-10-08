@@ -1,5 +1,5 @@
 /**
- * Stock adjustment screen.
+ * Stock adjustment screen — modern minimalist.
  *
  * - Pick a product (searchable list).
  * - Enter signed qty change (e.g. -2 for damaged/lost, +5 for correction).
@@ -14,7 +14,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import {
@@ -22,6 +21,8 @@ import {
   submitAdjustment,
 } from '../../services/stockApi';
 import { listProducts, ProductResponse } from '../../services/productApi';
+import { Badge, Button, Card, Input, ScreenHeader } from '../../components';
+import { colors, spacing, typography } from '../../theme';
 
 function parseQty(text: string): number | null {
   const cleaned = text.replace(',', '.').replace(/[^0-9.\-]/g, '');
@@ -113,157 +114,140 @@ export default function StockAdjustmentScreen() {
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      style={styles.container}
+      contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Stock Adjustment</Text>
-      <Text style={styles.muted}>
-        Koreksi stok manual. Alasan wajib diisi.
-      </Text>
-
-      <Text style={styles.label}>Cari produk</Text>
-      <TextInput
-        style={styles.input}
-        value={search}
-        onChangeText={text => {
-          setSearch(text);
-          setSelected(null);
-        }}
-        placeholder="Ketik nama / SKU…"
+      <ScreenHeader
+        title="Stock Adjustment"
+        subtitle="Koreksi stok manual. Alasan wajib diisi."
       />
-      {searching && <ActivityIndicator style={{ marginTop: 8 }} />}
-      {!searching && search.trim().length >= 2 && (
-        <FlatList
-          data={results}
-          keyExtractor={item => String(item.id)}
-          scrollEnabled={false}
-          style={styles.pickerList}
-          renderItem={({ item }) => (
-            <Pressable
-              style={[
-                styles.pickerItem,
-                selected?.id === item.id && styles.pickerItemSelected,
-              ]}
-              onPress={() => setSelected(item)}>
-              <Text style={styles.pickerName} numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text style={styles.pickerSku}>SKU: {item.sku}</Text>
-            </Pressable>
-          )}
+
+      <Card style={styles.card}>
+        <Text style={styles.sectionTitle}>Pilih Produk</Text>
+        <Input
+          label="Cari produk"
+          value={search}
+          onChangeText={text => {
+            setSearch(text);
+            setSelected(null);
+          }}
+          placeholder="Ketik nama / SKU…"
+          editable={!saving}
         />
-      )}
-      {selected && (
-        <Text style={styles.selectedText}>
-          Terpilih: {selected.name} ({selected.sku})
-        </Text>
-      )}
+        {searching && <ActivityIndicator color={colors.primary} />}
+        {!searching && search.trim().length >= 2 && (
+          <FlatList
+            data={results}
+            keyExtractor={item => String(item.id)}
+            scrollEnabled={false}
+            style={styles.pickerList}
+            renderItem={({ item }) => (
+              <Pressable
+                style={[
+                  styles.pickerItem,
+                  selected?.id === item.id && styles.pickerItemSelected,
+                ]}
+                onPress={() => setSelected(item)}>
+                <Text style={styles.pickerName} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={styles.pickerSku}>{item.sku}</Text>
+              </Pressable>
+            )}
+          />
+        )}
+        {selected && (
+          <Badge
+            label={`Terpilih: ${selected.name} (${selected.sku})`}
+            tone="accent"
+            style={styles.selectedBadge}
+          />
+        )}
+      </Card>
 
-      <Text style={styles.label}>Perubahan qty (+/-)</Text>
-      <TextInput
-        style={styles.input}
-        value={qtyText}
-        onChangeText={setQtyText}
-        keyboardType="decimal-pad"
-        placeholder="cth. -2 atau 5"
-      />
+      <Card style={styles.card}>
+        <Text style={styles.sectionTitle}>Perubahan</Text>
+        <Input
+          label="Perubahan qty (+/-)"
+          value={qtyText}
+          onChangeText={setQtyText}
+          keyboardType="decimal-pad"
+          placeholder="cth. -2 atau 5"
+          editable={!saving}
+        />
+        <Input
+          label="Alasan *"
+          value={reason}
+          onChangeText={setReason}
+          placeholder="cth. Barang rusak, hilang, salah input"
+          multiline
+          editable={!saving}
+          style={styles.reasonInput}
+        />
+      </Card>
 
-      <Text style={styles.label}>Alasan *</Text>
-      <TextInput
-        style={[styles.input, styles.multiline]}
-        value={reason}
-        onChangeText={setReason}
-        placeholder="cth. Barang rusak, hilang, salah input"
-        multiline
-      />
-
-      <Pressable
-        style={[styles.primaryBtn, saving && styles.btnDisabled]}
+      <Button
+        title={saving ? 'Menyimpan…' : 'Simpan Adjustment'}
         onPress={() => void doSubmit()}
-        disabled={saving}>
-        <Text style={styles.primaryBtnText}>
-          {saving ? 'Menyimpan…' : 'Simpan Adjustment'}
-        </Text>
-      </Pressable>
+        loading={saving}
+        size="lg"
+        style={styles.submit}
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    backgroundColor: '#f5f5f5',
-    flexGrow: 1,
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 4,
+  content: {
+    paddingBottom: spacing.huge,
   },
-  muted: {
-    color: '#666',
-    marginBottom: 8,
+  card: {
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.lg,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  multiline: {
-    minHeight: 70,
-    textAlignVertical: 'top',
+  sectionTitle: {
+    ...typography.subtitle,
+    color: colors.text,
+    marginBottom: spacing.md,
   },
   pickerList: {
     maxHeight: 220,
-    marginTop: 4,
+    marginBottom: spacing.sm,
   },
   pickerItem: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 6,
+    backgroundColor: colors.background,
+    borderRadius: spacing.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
   },
   pickerItemSelected: {
-    borderColor: '#2e7d32',
-    borderWidth: 2,
+    borderColor: colors.primary,
+    borderWidth: 1.5,
   },
   pickerName: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.text,
   },
   pickerSku: {
-    fontSize: 12,
-    color: '#888',
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
   },
-  selectedText: {
-    marginTop: 8,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2e7d32',
+  selectedBadge: {
+    marginTop: spacing.sm,
   },
-  primaryBtn: {
-    backgroundColor: '#2e7d32',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 20,
+  reasonInput: {
+    minHeight: 84,
+    textAlignVertical: 'top',
   },
-  primaryBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  btnDisabled: {
-    opacity: 0.6,
+  submit: {
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.md,
   },
 });

@@ -1,6 +1,6 @@
 /**
- * Purchase hub screen: permission-gated shortcuts to PO list/form,
- * goods receipt, and purchase return.
+ * Purchase hub — modern minimalist.
+ * Permission-gated menu cards, single accent, generous whitespace.
  */
 import React from 'react';
 import {
@@ -13,6 +13,8 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../app/navigation';
 import { useAuthStore } from '../../stores/authStore';
+import { Card, EmptyState, ScreenHeader } from '../../components';
+import { colors, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Purchase'>;
 
@@ -86,11 +88,14 @@ export default function PurchaseScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Pembelian" subtitle="Kelola PO, penerimaan, dan retur" />
+
       {visible.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyText}>
-            Anda tidak memiliki izin modul pembelian.
-          </Text>
+          <EmptyState
+            title="Tidak ada izin"
+            message="Anda tidak memiliki izin modul pembelian."
+          />
         </View>
       ) : (
         <FlatList
@@ -98,14 +103,14 @@ export default function PurchaseScreen({ navigation }: Props) {
           keyExtractor={item => item.key}
           contentContainerStyle={styles.menuList}
           renderItem={({ item }) => (
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => go(item.route)}>
-              <View>
-                <Text style={styles.menuTitle}>{item.title}</Text>
-                <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
-              </View>
-              <Text style={styles.menuChevron}>›</Text>
+            <Pressable onPress={() => go(item.route)}>
+              <Card style={styles.menuItem} padding={spacing.xl}>
+                <View style={styles.menuText}>
+                  <Text style={styles.menuTitle}>{item.title}</Text>
+                  <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                </View>
+                <Text style={styles.menuChevron}>›</Text>
+              </Card>
             </Pressable>
           )}
         />
@@ -117,46 +122,36 @@ export default function PurchaseScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  emptyText: {
-    color: '#666',
-    textAlign: 'center',
   },
   menuList: {
-    padding: 16,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.huge,
   },
   menuItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    marginBottom: spacing.md,
+  },
+  menuText: {
+    flex: 1,
   },
   menuTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.bodyBold,
+    color: colors.text,
   },
   menuSubtitle: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   menuChevron: {
-    fontSize: 22,
-    color: '#aaa',
+    fontSize: 24,
+    color: colors.textMuted,
+    marginLeft: spacing.md,
   },
 });

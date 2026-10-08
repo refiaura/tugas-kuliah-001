@@ -1,7 +1,6 @@
 /**
- * Goods receipt screen: pick a receivable PO (ORDERED / PARTIALLY_RECEIVED),
- * input the actual received qty per line (partial OK), and submit.
- * Receipts add stock via PURCHASE movements on the backend.
+ * Goods receipt — modern minimalist.
+ * PO picker, line qty inputs in Cards, sticky submit button.
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -11,7 +10,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -24,6 +22,8 @@ import {
   PurchaseOrder,
 } from '../../services/purchaseApi';
 import { formatQty } from '../../services/stockApi';
+import { Button, Card, EmptyState, Input, ScreenHeader } from '../../components';
+import { colors, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'GoodsReceipt'>;
 
@@ -34,6 +34,10 @@ function parseQty(text: string): number | null {
   if (cleaned === '') return null;
   const n = Number(cleaned);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function SectionTitle({ children }: { children: string }) {
+  return <Text style={styles.sectionTitle}>{children}</Text>;
 }
 
 export default function GoodsReceiptScreen({ navigation, route }: Props) {
@@ -125,7 +129,7 @@ export default function GoodsReceiptScreen({ navigation, route }: Props) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.muted}>Memuat PO…</Text>
       </View>
     );
@@ -133,90 +137,102 @@ export default function GoodsReceiptScreen({ navigation, route }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Purchase Order</Text>
-      {po ? (
-        <View style={styles.poCard}>
-          <Text style={styles.poDoc}>{po.docNo}</Text>
-          <Text style={styles.meta}>{po.supplierName}</Text>
-          <Pressable onPress={() => setPo(null)} hitSlop={8}>
-            <Text style={styles.changeLink}>Ganti PO</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <FlatList
-          data={pos}
-          keyExtractor={item => String(item.id)}
-          style={styles.poList}
-          ListEmptyComponent={
-            <Text style={styles.muted}>
-              Tidak ada PO yang bisa diterima (ORDERED / PARTIALLY_RECEIVED).
-            </Text>
-          }
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.poItem}
-              onPress={() => {
-                setPo(item);
-                setQtyTexts({});
-              }}>
-              <Text style={styles.poDoc}>{item.docNo}</Text>
-              <Text style={styles.meta}>{item.supplierName}</Text>
-            </Pressable>
-          )}
-        />
-      )}
+      <ScreenHeader title="Terima Barang" subtitle="Goods receipt · parsial didukung" />
 
-      {po && (
-        <>
-          <TextInput
-            style={styles.notesInput}
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Catatan receipt (opsional)"
-          />
+      <View style={styles.body}>
+        <SectionTitle>Purchase Order</SectionTitle>
+        {po ? (
+          <Card style={styles.poCard}>
+            <View style={styles.poRow}>
+              <View style={styles.poText}>
+                <Text style={styles.poDoc}>{po.docNo}</Text>
+                <Text style={styles.meta}>{po.supplierName}</Text>
+              </View>
+              <Pressable onPress={() => setPo(null)} hitSlop={8}>
+                <Text style={styles.changeLink}>Ganti</Text>
+              </Pressable>
+            </View>
+          </Card>
+        ) : (
           <FlatList
-            data={po.lines}
+            data={pos}
             keyExtractor={item => String(item.id)}
-            contentContainerStyle={styles.list}
-            renderItem={({ item }) => {
-              const remaining = remainingOf(item);
-              return (
-                <View style={styles.card}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {item.productName}
-                  </Text>
-                  <Text style={styles.meta}>
-                    Order {formatQty(item.qty)} · sudah diterima{' '}
-                    {formatQty(item.receivedQty)} · sisa{' '}
-                    {formatQty(remaining)}
-                  </Text>
-                  <TextInput
-                    style={styles.qtyInput}
-                    value={qtyTexts[item.id] ?? ''}
-                    onChangeText={text =>
-                      setQtyTexts(prev => ({ ...prev, [item.id]: text }))
-                    }
-                    keyboardType="decimal-pad"
-                    placeholder={`Qty terima (maks ${formatQty(remaining)})`}
-                  />
-                </View>
-              );
-            }}
+            style={styles.poList}
+            ListEmptyComponent={
+              <EmptyState
+                title="Tidak ada PO"
+                message="Tidak ada PO yang bisa diterima (ORDERED / PARTIALLY_RECEIVED)."
+              />
+            }
+            renderItem={({ item }) => (
+              <Pressable
+                onPress={() => {
+                  setPo(item);
+                  setQtyTexts({});
+                }}>
+                <Card style={styles.poItem}>
+                  <Text style={styles.poDoc}>{item.docNo}</Text>
+                  <Text style={styles.meta}>{item.supplierName}</Text>
+                </Card>
+              </Pressable>
+            )}
           />
-          <View style={styles.footer}>
-            <Pressable
-              style={[styles.primaryBtn, submitting && styles.btnDisabled]}
-              onPress={() => void doSubmit()}
-              disabled={submitting}>
-              <Text style={styles.primaryBtnText}>
-                {submitting
-                  ? 'Menyimpan…'
-                  : `Simpan Receipt (${filledLines.length})`}
-              </Text>
-            </Pressable>
-          </View>
-        </>
-      )}
+        )}
+
+        {po && (
+          <>
+            <Card style={styles.notesCard}>
+              <Input
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Catatan receipt (opsional)"
+                containerStyle={styles.noMargin}
+              />
+            </Card>
+            <FlatList
+              data={po.lines}
+              keyExtractor={item => String(item.id)}
+              contentContainerStyle={styles.list}
+              renderItem={({ item }) => {
+                const remaining = remainingOf(item);
+                return (
+                  <Card style={styles.lineCard}>
+                    <Text style={styles.name} numberOfLines={1}>
+                      {item.productName}
+                    </Text>
+                    <Text style={styles.meta}>
+                      Order {formatQty(item.qty)} · sudah diterima{' '}
+                      {formatQty(item.receivedQty)} · sisa{' '}
+                      {formatQty(remaining)}
+                    </Text>
+                    <Input
+                      value={qtyTexts[item.id] ?? ''}
+                      onChangeText={text =>
+                        setQtyTexts(prev => ({ ...prev, [item.id]: text }))
+                      }
+                      keyboardType="decimal-pad"
+                      placeholder={`Qty terima (maks ${formatQty(remaining)})`}
+                      containerStyle={styles.noMarginTop}
+                    />
+                  </Card>
+                );
+              }}
+            />
+            <View style={styles.footer}>
+              <Button
+                title={
+                  submitting
+                    ? 'Menyimpan…'
+                    : `Simpan Receipt (${filledLines.length})`
+                }
+                onPress={() => void doSubmit()}
+                loading={submitting}
+                size="lg"
+              />
+            </View>
+          </>
+        )}
+      </View>
     </View>
   );
 }
@@ -224,120 +240,91 @@ export default function GoodsReceiptScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
+  },
+  body: {
+    flex: 1,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    backgroundColor: colors.background,
+    padding: spacing.xl,
   },
   muted: {
-    color: '#666',
-    marginTop: 8,
+    ...typography.body,
+    color: colors.textMuted,
+    marginTop: spacing.md,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    margin: 16,
-    marginBottom: 8,
+    ...typography.subtitle,
+    color: colors.text,
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.md,
   },
   poList: {
-    marginHorizontal: 16,
+    paddingHorizontal: spacing.xl,
     flexGrow: 0,
-    maxHeight: 280,
+    maxHeight: 320,
   },
   poItem: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    marginBottom: spacing.md,
   },
   poCard: {
-    backgroundColor: '#e3f2fd',
-    borderRadius: 12,
-    padding: 14,
-    marginHorizontal: 16,
-    marginBottom: 8,
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.md,
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primarySoft,
   },
-  poDoc: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  meta: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
-  },
-  changeLink: {
-    color: '#1565c0',
-    fontWeight: '600',
-    marginTop: 6,
-  },
-  notesInput: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    marginHorizontal: 16,
-    marginBottom: 8,
-  },
-  list: {
-    padding: 16,
-    paddingTop: 4,
-    paddingBottom: 90,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-  },
-  name: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  qtyInput: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    marginTop: 8,
-    textAlign: 'right',
-  },
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: 16,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  primaryBtn: {
-    backgroundColor: '#1565c0',
-    borderRadius: 8,
-    padding: 14,
+  poRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  primaryBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
+  poText: {
+    flex: 1,
   },
-  btnDisabled: {
-    opacity: 0.6,
+  poDoc: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  meta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  changeLink: {
+    ...typography.bodyBold,
+    color: colors.primary,
+    marginLeft: spacing.md,
+  },
+  notesCard: {
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.md,
+  },
+  noMargin: {
+    marginBottom: 0,
+  },
+  list: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.huge,
+  },
+  lineCard: {
+    marginBottom: spacing.md,
+  },
+  name: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  noMarginTop: {
+    marginBottom: 0,
+    marginTop: spacing.md,
+  },
+  footer: {
+    padding: spacing.xl,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
 });
