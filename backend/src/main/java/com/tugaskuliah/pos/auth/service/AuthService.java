@@ -47,18 +47,28 @@ public class AuthService {
     private final UserMapper userMapper;
     private final PlatformTransactionManager transactionManager;
     private final AuditService auditService;
+    private final LoginAttemptService loginAttemptService;
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
+        if (loginAttemptService.isLocked(request.username())) {
+            log.warn("Blocked login for locked username={}", request.username());
+            throw new ApiException(ErrorCode.AUTH_TOO_MANY_ATTEMPTS);
+        }
         User user = userRepository.findWithRolesByUsername(request.username())
-                .orElseThrow(() -> new ApiException(ErrorCode.AUTH_INVALID_CREDENTIALS));
+                .orElseThrow(() -> {
+                    loginAttemptService.recordFailure(request.username());
+                    return new ApiException(ErrorCode.AUTH_INVALID_CREDENTIALS);
+                });
         if (!user.isActive()) {
             throw new ApiException(ErrorCode.AUTH_USER_INACTIVE);
         }
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             log.warn("Failed login attempt for username={}", request.username());
+            loginAttemptService.recordFailure(request.username());
             throw new ApiException(ErrorCode.AUTH_INVALID_CREDENTIALS);
         }
+        loginAttemptService.recordSuccess(request.username());
         TokenResponse token = issueTokens(user);
         log.info("User logged in: id={} username={}", user.getId(), user.getUsername());
         auditService.log(user.getUsername(), "USER_LOGIN", "USER", user.getId());

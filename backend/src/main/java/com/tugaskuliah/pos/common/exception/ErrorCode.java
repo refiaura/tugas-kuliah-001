@@ -15,6 +15,7 @@ public enum ErrorCode {
     AUTH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Token tidak valid atau kadaluarsa"),
     AUTH_TOKEN_REVOKED(HttpStatus.UNAUTHORIZED, "Token sudah tidak berlaku"),
     AUTH_REFRESH_REUSE_DETECTED(HttpStatus.UNAUTHORIZED, "Refresh token reuse terdeteksi; semua sesi dicabut"),
+    AUTH_TOO_MANY_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS, "Terlalu banyak percobaan login gagal; coba lagi beberapa menit"),
 
     // generic
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Validasi gagal"),

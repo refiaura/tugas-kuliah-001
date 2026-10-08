@@ -131,3 +131,18 @@ java -jar target/pos-backend-0.0.1-SNAPSHOT.jar
 # mobile — cek TypeScript
 cd mobile && npx tsc --noEmit
 ```
+
+## 8. Checklist sebelum production
+
+Jangan deploy ke production sebelum semua ini beres:
+
+- [ ] Ganti JWT secret: set env `JWT_SECRET` (min. 32 byte acak). Jangan pakai
+      default `dev-secret-key-...`.
+- [ ] Ganti password akun `admin` (default `admin123` hanya untuk dev).
+- [ ] PostgreSQL: user `pos` jangan pakai password `pos`; batasi akses network.
+- [ ] Backend: set `spring.profiles.active=prod` bila ada konfigurasi prod.
+- [ ] Mobile: `API_BASE_URL` menunjuk ke server production (HTTPS).
+- [ ] Jalankan full test suite: `cd backend && ./mvnw test` — semua harus hijau.
+- [ ] Backup database terjadwal.
+- [ ] Login brute-force: proteksi 5x gagal → lockout 5 menit sudah aktif
+      (in-memory; untuk multi-instance pindahkan ke Redis/DB).

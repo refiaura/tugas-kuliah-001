@@ -1,6 +1,6 @@
 package com.tugaskuliah.pos.control.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.tugaskuliah.pos.control.dto.AuditLogResponse;
 import com.tugaskuliah.pos.control.entity.AuditLog;
 import com.tugaskuliah.pos.control.repository.AuditLogRepository;
@@ -20,23 +20,23 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     /** Record one audit entry in the current transaction. */
-    public void log(String actor, String action, String entityType, String entityId,
+    public void log(String actor, String action, String entityType, Object entityId,
                     Object oldValue, Object newValue) {
         AuditLog a = new AuditLog();
         a.setActor(actor != null ? actor : "system");
         a.setAction(action);
         a.setEntityType(entityType);
-        a.setEntityId(entityId != null ? entityId : "-");
+        a.setEntityId(entityId != null ? String.valueOf(entityId) : "-");
         a.setOldValue(toJson(oldValue));
         a.setNewValue(toJson(newValue));
         auditLogRepository.save(a);
     }
 
     public void log(String actor, String action, String entityType, Object entityId) {
-        log(actor, action, entityType, String.valueOf(entityId), null, null);
+        log(actor, action, entityType, entityId, null, null);
     }
 
     @Transactional(readOnly = true)

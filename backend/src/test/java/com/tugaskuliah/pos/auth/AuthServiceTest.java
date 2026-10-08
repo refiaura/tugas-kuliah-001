@@ -7,6 +7,8 @@ import com.tugaskuliah.pos.auth.dto.TokenResponse;
 import com.tugaskuliah.pos.auth.entity.RefreshToken;
 import com.tugaskuliah.pos.auth.repository.RefreshTokenRepository;
 import com.tugaskuliah.pos.auth.service.AuthService;
+import com.tugaskuliah.pos.auth.service.LoginAttemptService;
+import com.tugaskuliah.pos.control.service.AuditService;
 import com.tugaskuliah.pos.common.exception.ApiException;
 import com.tugaskuliah.pos.common.exception.ErrorCode;
 import com.tugaskuliah.pos.common.security.JwtService;
@@ -43,9 +45,11 @@ class AuthServiceTest {
     @Mock RefreshTokenRepository refreshTokenRepository;
     @Mock JwtService jwtService;
     @Mock PlatformTransactionManager transactionManager;
+    @Mock AuditService auditService;
 
     PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     UserMapper userMapper = Mappers.getMapper(UserMapper.class);
+    LoginAttemptService loginAttemptService = new LoginAttemptService();
     AuthService authService;
 
     User kasir;
@@ -53,7 +57,8 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         authService = new AuthService(userRepository, refreshTokenRepository,
-                passwordEncoder, jwtService, userMapper, transactionManager);
+                passwordEncoder, jwtService, userMapper, transactionManager, auditService,
+                loginAttemptService);
         // Let TransactionTemplate execute callbacks synchronously in unit tests.
         lenient().when(transactionManager.getTransaction(any(TransactionDefinition.class)))
                 .thenReturn(new SimpleTransactionStatus());
@@ -162,5 +167,40 @@ class AuthServiceTest {
                 ? OffsetDateTime.now().minusHours(1)
                 : OffsetDateTime.now().plusDays(7));
         return t;
+    }
+
+    @Test
+    void login_lockedAfterTooManyFailures() {
+        // 5 wrong passwords -> locked on the 6th attempt even with correct password.
+        when(userRepository.findWithRolesByUsername("kasir1")).thenReturn(Optional.of(kasir));
+        for (int i = 0; i < 5; i++) {
+            ApiException ex = assertThrows(ApiException.class,
+                    () -> authService.login(new LoginRequest("kasir1", "salah")));
+            assertEquals(ErrorCode.AUTH_INVALID_CREDENTIALS, ex.getErrorCode());
+        }
+        ApiException locked = assertThrows(ApiException.class,
+                () -> authService.login(new LoginRequest("kasir1", "rahasia123")));
+        assertEquals(ErrorCode.AUTH_TOO_MANY_ATTEMPTS, locked.getErrorCode());
+    }
+
+    @Test
+    void login_successClearsFailureCounter() {
+        when(userRepository.findWithRolesByUsername("kasir1")).thenReturn(Optional.of(kasir));
+        // 4 failures, then success -> counter reset, next failure starts from 1.
+        for (int i = 0; i < 4; i++) {
+            assertThrows(ApiException.class,
+                    () -> authService.login(new LoginRequest("kasir1", "salah")));
+        }
+        // Mock token issuance for the successful login.
+        when(jwtService.generateAccessToken(any())).thenReturn("access");
+        when(jwtService.generateRefreshToken()).thenReturn("refresh");
+        when(jwtService.getRefreshExpirationMs()).thenReturn(604800000L);
+        when(jwtService.getAccessExpirationMs()).thenReturn(900000L);
+        LoginResponse ok = authService.login(new LoginRequest("kasir1", "rahasia123"));
+        assertNotNull(ok);
+        // After reset, 5 more failures are needed before lockout (not 1).
+        ApiException ex = assertThrows(ApiException.class,
+                () -> authService.login(new LoginRequest("kasir1", "salah")));
+        assertEquals(ErrorCode.AUTH_INVALID_CREDENTIALS, ex.getErrorCode());
     }
 }
