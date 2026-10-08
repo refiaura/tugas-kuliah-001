@@ -16,6 +16,7 @@ import com.tugaskuliah.pos.masterdata.repository.SupplierRepository;
 import com.tugaskuliah.pos.purchase.dto.*;
 import com.tugaskuliah.pos.purchase.entity.*;
 import com.tugaskuliah.pos.purchase.repository.*;
+import com.tugaskuliah.pos.report.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -57,6 +58,7 @@ public class PurchaseService {
     private final InventoryBalanceRepository balanceRepository;
     private final StockMovementRepository movementRepository;
     private final DocumentCounterRepository counterRepository;
+    private final NotificationService notificationService;
 
     // ---------- reads ----------
 
@@ -119,7 +121,10 @@ public class PurchaseService {
             total = total.add(lineReq.qty().multiply(lineReq.unitPrice()));
         }
         po.setTotalAmount(total);
-        return toOrderResponse(orderRepository.save(po));
+        PurchaseOrder saved = orderRepository.save(po);
+        // Milestone 8: DRAFT PO needs follow-up (best-effort)
+        notificationService.notifyPoPending(saved);
+        return toOrderResponse(saved);
     }
 
     @Transactional

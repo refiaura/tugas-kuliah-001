@@ -10,6 +10,7 @@ import com.tugaskuliah.pos.shift.entity.CashMovement;
 import com.tugaskuliah.pos.shift.entity.CashierShift;
 import com.tugaskuliah.pos.shift.repository.CashMovementRepository;
 import com.tugaskuliah.pos.shift.repository.CashierShiftRepository;
+import com.tugaskuliah.pos.report.service.NotificationService;
 import com.tugaskuliah.pos.user.entity.User;
 import com.tugaskuliah.pos.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ public class ShiftService {
     private final SaleRepository saleRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public Optional<ShiftResponse> currentShift() {
@@ -58,7 +60,10 @@ public class ShiftService {
         s.setStatus(CashierShift.Status.OPEN);
         s.setOpeningCash(req.openingCash());
         s.setNotes(req.notes());
-        return toResponse(shiftRepository.save(s));
+        CashierShift saved = shiftRepository.save(s);
+        // Milestone 8: shift-open notification (best-effort)
+        notificationService.notifyShiftOpen(saved.getId(), currentUsername());
+        return toResponse(saved);
     }
 
     @Transactional
@@ -111,6 +116,8 @@ public class ShiftService {
             // The shift stays closed; it is never blocked.
             eventPublisher.publishEvent(new ShiftVarianceEvent(
                     saved.getId(), currentUsername(), expected, req.actualCash(), variance));
+            // Milestone 8: notify about the variance (best-effort)
+            notificationService.notifyShiftVariance(saved.getId(), currentUsername(), variance);
         }
         return toResponse(saved);
     }

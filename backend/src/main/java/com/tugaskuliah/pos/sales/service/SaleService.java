@@ -20,6 +20,7 @@ import com.tugaskuliah.pos.sales.entity.Sale;
 import com.tugaskuliah.pos.sales.entity.SaleItem;
 import com.tugaskuliah.pos.sales.entity.SalePayment;
 import com.tugaskuliah.pos.sales.repository.SaleRepository;
+import com.tugaskuliah.pos.report.service.NotificationService;
 import com.tugaskuliah.pos.shift.entity.CashierShift;
 import com.tugaskuliah.pos.shift.service.ShiftService;
 import com.tugaskuliah.pos.user.entity.User;
@@ -66,6 +67,7 @@ public class SaleService {
     private final InventoryBalanceRepository balanceRepository;
     private final DocumentCounterRepository counterRepository;
     private final ShiftService shiftService;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public Page<SaleResponse> list(Sale.Status status, Pageable pageable) {
@@ -154,8 +156,10 @@ public class SaleService {
         BigDecimal subtotal = BigDecimal.ZERO;
         sale.getItems().clear();
         java.util.List<StockMovement> movements = new java.util.ArrayList<>();
+        java.util.List<Product> soldProducts = new java.util.ArrayList<>();
         for (var itemReq : req.items()) {
             Product p = findActiveProduct(itemReq.productId());
+            soldProducts.add(p);
             BigDecimal qty = itemReq.qty();
             // stock check with pessimistic lock (concurrent-safe)
             deductStock(p, qty);
@@ -217,6 +221,8 @@ public class SaleService {
             m.setReferenceId(saved.getId());
             movementRepository.save(m);
         }
+        // Milestone 8: low/out-of-stock notifications (best-effort, never breaks checkout)
+        notificationService.checkStockAfterSale(soldProducts);
         return toResponse(saved);
     }
 

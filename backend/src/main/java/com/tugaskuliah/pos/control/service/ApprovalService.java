@@ -8,6 +8,7 @@ import com.tugaskuliah.pos.control.dto.ApprovalResponse;
 import com.tugaskuliah.pos.control.entity.Approval;
 import com.tugaskuliah.pos.control.repository.ApprovalRepository;
 import com.tugaskuliah.pos.control.repository.SaleReturnRepository;
+import com.tugaskuliah.pos.report.service.NotificationService;
 import com.tugaskuliah.pos.sales.repository.SaleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -37,6 +38,7 @@ public class ApprovalService {
     private final SaleRepository saleRepository;
     private final SaleReturnRepository saleReturnRepository;
     private final AuditService auditService;
+    private final NotificationService notificationService;
     private final List<ApprovalExecutor> executors;
 
     private Map<Approval.SubjectType, ApprovalExecutor> executorMap() {
@@ -77,6 +79,8 @@ public class ApprovalService {
         Approval saved = approvalRepository.save(a);
         auditService.log(by, subjectType + "_REQUESTED", "APPROVAL", saved.getId(),
                 null, Map.of("subjectId", subjectId, "reason", reason));
+        // Milestone 8: notify approvers (best-effort)
+        notificationService.notifyPendingApproval(saved);
         return toResponse(saved);
     }
 

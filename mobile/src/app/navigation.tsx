@@ -48,6 +48,10 @@ import TransactionDetailScreen from '../modules/control/TransactionDetailScreen'
 import ReturnRequestScreen from '../modules/control/ReturnRequestScreen';
 import ApprovalInboxScreen from '../modules/control/ApprovalInboxScreen';
 import AuditLogScreen from '../modules/control/AuditLogScreen';
+import DashboardScreen from '../modules/reports/DashboardScreen';
+import ReportsScreen, { ReportKind } from '../modules/reports/ReportsScreen';
+import ReportViewerScreen from '../modules/reports/ReportViewerScreen';
+import NotificationsScreen from '../modules/reports/NotificationsScreen';
 import { SaleResponse } from '../services/saleApi';
 
 /* ---------------------------------- types --------------------------------- */
@@ -82,6 +86,10 @@ export type AppStackParamList = {
   ReturnRequest: { saleId: number };
   ApprovalInbox: undefined;
   AuditLog: undefined;
+  Dashboard: undefined;
+  Reports: undefined;
+  ReportViewer: { kind: ReportKind; title: string };
+  Notifications: undefined;
   ModulePlaceholder: { title: string };
 };
 
@@ -106,7 +114,10 @@ interface MenuItem {
     | 'Shift'
     | 'Stock'
     | 'Purchase'
-    | 'Control';
+    | 'Control'
+    | 'Dashboard'
+    | 'Reports'
+    | 'Notifications';
 }
 
 const MENU_ITEMS: MenuItem[] = [
@@ -142,7 +153,9 @@ const MENU_ITEMS: MenuItem[] = [
     route: 'ProductList',
   },
   { key: 'users', title: 'Pengguna', permission: 'user.view' },
-  { key: 'reports', title: 'Laporan', permission: 'report.sales' },
+  { key: 'dashboard', title: 'Dashboard', permission: 'report.sales', route: 'Dashboard' },
+  { key: 'reports', title: 'Laporan', permission: 'report.sales', route: 'Reports' },
+  { key: 'notifications', title: 'Notifikasi', permission: 'notification.view', route: 'Notifications' },
 ];
 
 /* --------------------------------- screens -------------------------------- */
@@ -381,6 +394,26 @@ function AppNavigator() {
         name="AuditLog"
         component={AuditLogScreen}
         options={{ title: 'Audit Log' }}
+      />
+      <AppStack.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{ title: 'Dashboard' }}
+      />
+      <AppStack.Screen
+        name="Reports"
+        component={ReportsScreen}
+        options={{ title: 'Laporan' }}
+      />
+      <AppStack.Screen
+        name="ReportViewer"
+        component={ReportViewerScreen}
+        options={({ route }) => ({ title: route.params.title })}
+      />
+      <AppStack.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{ title: 'Notifikasi' }}
       />
       <AppStack.Screen
         name="ModulePlaceholder"
