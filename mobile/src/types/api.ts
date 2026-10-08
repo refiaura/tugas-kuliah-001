@@ -1,6 +1,6 @@
 /**
  * Shared API contract types.
- * Mirrors the backend envelope: { success, message, data, paginated? }
+ * Mirrors the backend envelope: { success, message, data, pagination? }
  */
 
 /** Standard backend response envelope (PRD §32). */
@@ -8,7 +8,7 @@ export interface ApiResponse<T> {
   success: boolean;
   message: string;
   data: T | null;
-  paginated?: PageInfo | null;
+  pagination?: PageInfo | null;
 }
 
 export interface PageInfo {

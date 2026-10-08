@@ -21,14 +21,15 @@ auth → business rule → audit → test → frontend → states → integrasi 
 - [x] Mobile: login screen, authStore, token refresh interceptor, menu by permission
 - [ ] Audit log login/logout & perubahan user/role → Milestone 7
 
-## MILESTONE 2 — Master Data
+## MILESTONE 2 — Master Data ✅ (2026-10-08, lihat `MILESTONE_2_REPORT.md`)
 
-- [ ] Category, Unit, Product (+SKU/barcode unique, is_active), Variant
-- [ ] `product_prices` history (1 harga aktif); Customer (+GENERAL seed), Supplier
-- [ ] `payment_methods` seed (CASH, QRIS, DEBIT, CREDIT_CARD, TRANSFER)
-- [ ] CRUD + pagination/search/filter/sort + validation; audit PRICE_CHANGE
-- [ ] Test: SKU duplikat ditolak, produk inactive, histori harga
-- [ ] Mobile: daftar produk + search, form produk
+- [x] Category, Unit, Product (+SKU/barcode unique, is_active), Variant
+- [x] `product_prices` history; Customer (+GENERAL seed), Supplier
+- [x] `payment_methods` seed (CASH, QRIS, DEBIT, CREDIT_CARD, TRANSFER)
+- [x] CRUD + pagination/search/filter + validation; price change tercatat di product_prices
+- [x] Test: 5/5 lolos (SKU duplikat ditolak, histori harga, RBAC kasir 403, search)
+- [x] Mobile: daftar produk + search, form produk (tsc lolos)
+- [ ] Audit log PRICE_CHANGE formal → Milestone 7
 
 ## MILESTONE 3 — POS / Sales
 

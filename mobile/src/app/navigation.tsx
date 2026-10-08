@@ -24,6 +24,8 @@ import {
 } from '@react-navigation/native-stack';
 import { useAuthStore } from '../stores/authStore';
 import LoginScreen from '../modules/auth/LoginScreen';
+import ProductListScreen from '../modules/products/ProductListScreen';
+import ProductFormScreen from '../modules/products/ProductFormScreen';
 
 /* ---------------------------------- types --------------------------------- */
 
@@ -31,8 +33,10 @@ type AuthStackParamList = {
   Login: undefined;
 };
 
-type AppStackParamList = {
+export type AppStackParamList = {
   Home: undefined;
+  ProductList: undefined;
+  ProductForm: { productId?: number };
   ModulePlaceholder: { title: string };
 };
 
@@ -50,11 +54,18 @@ interface MenuItem {
   key: string;
   title: string;
   permission: string;
+  /** Stack route to navigate to (defaults to ModulePlaceholder). */
+  route?: 'ProductList';
 }
 
 const MENU_ITEMS: MenuItem[] = [
   { key: 'pos', title: 'Kasir / POS', permission: 'sales.create' },
-  { key: 'products', title: 'Produk', permission: 'product.view' },
+  {
+    key: 'products',
+    title: 'Produk',
+    permission: 'product.view',
+    route: 'ProductList',
+  },
   { key: 'users', title: 'Pengguna', permission: 'user.view' },
   { key: 'reports', title: 'Laporan', permission: 'report.sales' },
 ];
@@ -123,9 +134,15 @@ function HomeScreen({
           renderItem={({ item }) => (
             <Pressable
               style={styles.menuItem}
-              onPress={() =>
-                navigation.navigate('ModulePlaceholder', { title: item.title })
-              }>
+              onPress={() => {
+                if (item.route) {
+                  navigation.navigate(item.route);
+                } else {
+                  navigation.navigate('ModulePlaceholder', {
+                    title: item.title,
+                  });
+                }
+              }}>
               <Text style={styles.menuTitle}>{item.title}</Text>
               <Text style={styles.menuChevron}>›</Text>
             </Pressable>
@@ -167,6 +184,18 @@ function AppNavigator() {
           title: 'Kasir POS',
           headerRight: () => <LogoutButton />,
         }}
+      />
+      <AppStack.Screen
+        name="ProductList"
+        component={ProductListScreen}
+        options={{ title: 'Produk' }}
+      />
+      <AppStack.Screen
+        name="ProductForm"
+        component={ProductFormScreen}
+        options={({ route }) => ({
+          title: route.params.productId !== undefined ? 'Ubah Produk' : 'Tambah Produk',
+        })}
       />
       <AppStack.Screen
         name="ModulePlaceholder"
