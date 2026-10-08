@@ -82,9 +82,18 @@ class SaleIntegrationTest {
                 + (idemKey != null ? ",\"idempotencyKey\":\"" + idemKey + "\"" : "") + "}";
     }
 
+    private void openShift(String token) throws Exception {
+        mockMvc.perform(post("/api/v1/shifts/open")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"openingCash\":500000}"))
+                .andExpect(status().isCreated());
+    }
+
     @Test
     void checkout_valid_success() throws Exception {
         String token = adminToken();
+        openShift(token);
         Product p = createProduct("SKU-POS1", "Kopi", new BigDecimal("10000"));
         setStock(p.getId(), new BigDecimal("10"));
 
@@ -104,6 +113,19 @@ class SaleIntegrationTest {
     }
 
     @Test
+    void checkout_withoutShift_rejected() throws Exception {
+        String token = adminToken();
+        Product p = createProduct("SKU-POS6", "Mie", new BigDecimal("3000"));
+        setStock(p.getId(), new BigDecimal("10"));
+
+        mockMvc.perform(post("/api/v1/sales/checkout")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(checkoutJson(p.getId(), BigDecimal.ONE, new BigDecimal("3000"), "idem-4")))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
     void checkout_emptyCart_rejected() throws Exception {
         String token = adminToken();
         mockMvc.perform(post("/api/v1/sales/checkout")
@@ -116,6 +138,7 @@ class SaleIntegrationTest {
     @Test
     void checkout_insufficientStock_rejected() throws Exception {
         String token = adminToken();
+        openShift(token);
         Product p = createProduct("SKU-POS2", "Teh", new BigDecimal("5000"));
         setStock(p.getId(), new BigDecimal("1"));
 
@@ -133,6 +156,7 @@ class SaleIntegrationTest {
     @Test
     void checkout_doubleSubmit_idempotent() throws Exception {
         String token = adminToken();
+        openShift(token);
         Product p = createProduct("SKU-POS3", "Gula", new BigDecimal("15000"));
         setStock(p.getId(), new BigDecimal("10"));
 
@@ -158,6 +182,7 @@ class SaleIntegrationTest {
     @Test
     void hold_doesNotTouchStock() throws Exception {
         String token = adminToken();
+        openShift(token);
         Product p = createProduct("SKU-POS4", "Susu", new BigDecimal("20000"));
         setStock(p.getId(), new BigDecimal("5"));
 
@@ -188,6 +213,7 @@ class SaleIntegrationTest {
     @Test
     void checkout_inactiveProduct_rejected() throws Exception {
         String token = adminToken();
+        openShift(token);
         Product p = createProduct("SKU-POS5", "Roti", new BigDecimal("8000"));
         p.setActive(false);
         productRepository.save(p);

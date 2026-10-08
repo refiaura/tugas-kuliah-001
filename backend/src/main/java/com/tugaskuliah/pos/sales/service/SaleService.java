@@ -20,6 +20,8 @@ import com.tugaskuliah.pos.sales.entity.Sale;
 import com.tugaskuliah.pos.sales.entity.SaleItem;
 import com.tugaskuliah.pos.sales.entity.SalePayment;
 import com.tugaskuliah.pos.sales.repository.SaleRepository;
+import com.tugaskuliah.pos.shift.entity.CashierShift;
+import com.tugaskuliah.pos.shift.service.ShiftService;
 import com.tugaskuliah.pos.user.entity.User;
 import com.tugaskuliah.pos.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -63,6 +65,7 @@ public class SaleService {
     private final StockMovementRepository movementRepository;
     private final InventoryBalanceRepository balanceRepository;
     private final DocumentCounterRepository counterRepository;
+    private final ShiftService shiftService;
 
     @Transactional(readOnly = true)
     public Page<SaleResponse> list(Sale.Status status, Pageable pageable) {
@@ -137,6 +140,9 @@ public class SaleService {
     // ---------- core atomic flow ----------
 
     private SaleResponse completeCheckout(Sale sale, CheckoutRequest req) {
+        // PRD §34 step 2: shift must be open (skipped for HELD resume? no — resume also needs shift)
+        CashierShift shift = shiftService.requireOpenShift();
+        sale.setShift(shift);
         sale.setStatus(Sale.Status.COMPLETED);
         sale.setCashier(currentUser());
         if (req.customerId() != null) {

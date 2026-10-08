@@ -41,13 +41,14 @@ auth → business rule → audit → test → frontend → states → integrasi 
 - [ ] Concurrent checkout stress test → dijalankan di env dengan DB
 - [ ] Shift validation → Milestone 4
 
-## MILESTONE 4 — Cashier Shift
+## MILESTONE 4 — Cashier Shift ✅ (2026-10-08, lihat `MILESTONE_4_REPORT.md`)
 
-- [ ] `cashier_shifts` (1 aktif/kasir), `cash_movements` (in/out + reason)
-- [ ] Close shift: expected cash dihitung backend, variance, threshold approval
-- [ ] Checkout validasi shift aktif
-- [ ] Test: duplicate active shift, variance calc, cash in/out
-- [ ] Mobile: open shift, current shift, cash movement, close shift + reconcile
+- [x] `cashier_shifts` (1 aktif/kasir via partial unique index), `cash_movements` (in/out + reason)
+- [x] Close shift: expected cash dihitung backend, variance, threshold flag (>50rb)
+- [x] Checkout validasi shift aktif (SaleService.requireOpenShift)
+- [x] Test: 4 shift test + 1 checkout-tanpa-shift test ditulis (belum dijalankan — env)
+- [x] Mobile: open shift, current shift, cash movement, close shift + reconcile
+- [ ] Approval flow variance → Milestone 7
 
 ## MILESTONE 5 — Inventory
 

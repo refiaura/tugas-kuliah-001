@@ -1,6 +1,7 @@
 package com.tugaskuliah.pos.sales.entity;
 
 import com.tugaskuliah.pos.masterdata.entity.Customer;
+import com.tugaskuliah.pos.shift.entity.CashierShift;
 import com.tugaskuliah.pos.user.entity.User;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -35,6 +36,10 @@ public class Sale {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cashier_id")
     private User cashier;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "shift_id")
+    private CashierShift shift;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

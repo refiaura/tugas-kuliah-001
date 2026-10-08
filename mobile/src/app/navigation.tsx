@@ -29,6 +29,8 @@ import ProductFormScreen from '../modules/products/ProductFormScreen';
 import PosScreen from '../modules/pos/PosScreen';
 import PaymentScreen from '../modules/pos/PaymentScreen';
 import ReceiptScreen from '../modules/pos/ReceiptScreen';
+import ShiftScreen from '../modules/shift/ShiftScreen';
+import CloseShiftScreen from '../modules/shift/CloseShiftScreen';
 import { SaleResponse } from '../services/saleApi';
 
 /* ---------------------------------- types --------------------------------- */
@@ -44,6 +46,8 @@ export type AppStackParamList = {
   Pos: undefined;
   Payment: { resumeSaleId?: number };
   Receipt: { sale: SaleResponse };
+  Shift: undefined;
+  CloseShift: undefined;
   ModulePlaceholder: { title: string };
 };
 
@@ -62,11 +66,17 @@ interface MenuItem {
   title: string;
   permission: string;
   /** Stack route to navigate to (defaults to ModulePlaceholder). */
-  route?: 'ProductList' | 'Pos';
+  route?: 'ProductList' | 'Pos' | 'Shift';
 }
 
 const MENU_ITEMS: MenuItem[] = [
   { key: 'pos', title: 'Kasir / POS', permission: 'sales.create', route: 'Pos' },
+  {
+    key: 'shift',
+    title: 'Shift Kasir',
+    permission: 'shift.open',
+    route: 'Shift',
+  },
   {
     key: 'products',
     title: 'Produk',
@@ -218,6 +228,16 @@ function AppNavigator() {
         name="Receipt"
         component={ReceiptScreen}
         options={{ title: 'Struk', headerBackVisible: false }}
+      />
+      <AppStack.Screen
+        name="Shift"
+        component={ShiftScreen}
+        options={{ title: 'Shift Kasir' }}
+      />
+      <AppStack.Screen
+        name="CloseShift"
+        component={CloseShiftScreen}
+        options={{ title: 'Tutup Shift' }}
       />
       <AppStack.Screen
         name="ModulePlaceholder"

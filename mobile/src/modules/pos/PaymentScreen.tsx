@@ -26,6 +26,7 @@ import {
   formatRupiah,
   useCartStore,
 } from '../../stores/cartStore';
+import { useShiftStore } from '../../stores/shiftStore';
 import { AppStackParamList } from '../../app/navigation';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Payment'>;
@@ -104,6 +105,32 @@ export default function PaymentScreen({ navigation, route }: Props) {
       );
       return;
     }
+    void (async () => {
+      // Shift must be open before any checkout (backend also enforces it).
+      let shift = useShiftStore.getState().currentShift;
+      if (!useShiftStore.getState().initialized) {
+        await useShiftStore.getState().fetchCurrent();
+        shift = useShiftStore.getState().currentShift;
+      }
+      if (!shift) {
+        Alert.alert(
+          'Shift belum dibuka',
+          'Buka shift dulu sebelum memproses transaksi.',
+          [
+            { text: 'Batal', style: 'cancel' },
+            {
+              text: 'Buka Shift',
+              onPress: () => navigation.navigate('Shift'),
+            },
+          ],
+        );
+        return;
+      }
+      confirmProcess();
+    })();
+  };
+
+  const confirmProcess = () => {
     Alert.alert(
       'Proses Transaksi',
       `Total ${formatRupiah(grandTotal)} · Bayar ${formatRupiah(
