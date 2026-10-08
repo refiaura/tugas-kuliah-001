@@ -1,7 +1,6 @@
 package com.tugaskuliah.pos.inventory.entity;
 
 import com.tugaskuliah.pos.masterdata.entity.Product;
-import com.tugaskuliah.pos.masterdata.entity.ProductVariant;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,40 +9,33 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
+/**
+ * Manual stock correction. Reason is mandatory (PRD §19); the change posts
+ * one ADJUSTMENT movement and updates the balance atomically.
+ */
 @Entity
-@Table(name = "stock_movements")
+@Table(name = "stock_adjustments")
 @Getter
 @Setter
 @NoArgsConstructor
-public class StockMovement {
+public class StockAdjustment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "doc_no", nullable = false, unique = true, length = 50)
+    private String docNo;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "variant_id")
-    private ProductVariant variant;
-
     @Column(name = "qty_change", nullable = false, precision = 19, scale = 2)
-    private BigDecimal qtyChange; // negative for outbound
+    private BigDecimal qtyChange; // signed
 
-    @Column(name = "movement_type", nullable = false, length = 20)
-    private String movementType; // SALE, PURCHASE, RETURN, ADJUSTMENT, STOCK_OPNAME, TRANSFER_IN, TRANSFER_OUT, RECEIVE
-
-    /** Simple location label (PRD §17.1: every movement carries warehouse/store). */
-    @Column(length = 100)
-    private String location;
-
-    @Column(name = "reference_type", nullable = false, length = 20)
-    private String referenceType;
-
-    @Column(name = "reference_id", nullable = false)
-    private Long referenceId;
+    @Column(nullable = false, length = 255)
+    private String reason;
 
     @Column(name = "created_by", length = 50)
     private String createdBy;

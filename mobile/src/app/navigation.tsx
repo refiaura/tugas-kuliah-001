@@ -31,6 +31,11 @@ import PaymentScreen from '../modules/pos/PaymentScreen';
 import ReceiptScreen from '../modules/pos/ReceiptScreen';
 import ShiftScreen from '../modules/shift/ShiftScreen';
 import CloseShiftScreen from '../modules/shift/CloseShiftScreen';
+import StockScreen from '../modules/stock/StockScreen';
+import StockOpnameScreen from '../modules/stock/StockOpnameScreen';
+import StockAdjustmentScreen from '../modules/stock/StockAdjustmentScreen';
+import StockTransferScreen from '../modules/stock/StockTransferScreen';
+import StockHistoryScreen from '../modules/stock/StockHistoryScreen';
 import { SaleResponse } from '../services/saleApi';
 
 /* ---------------------------------- types --------------------------------- */
@@ -48,6 +53,11 @@ export type AppStackParamList = {
   Receipt: { sale: SaleResponse };
   Shift: undefined;
   CloseShift: undefined;
+  Stock: undefined;
+  StockOpname: undefined;
+  StockAdjustment: undefined;
+  StockTransfer: undefined;
+  StockHistory: undefined;
   ModulePlaceholder: { title: string };
 };
 
@@ -66,7 +76,11 @@ interface MenuItem {
   title: string;
   permission: string;
   /** Stack route to navigate to (defaults to ModulePlaceholder). */
-  route?: 'ProductList' | 'Pos' | 'Shift';
+  route?:
+    | 'ProductList'
+    | 'Pos'
+    | 'Shift'
+    | 'Stock';
 }
 
 const MENU_ITEMS: MenuItem[] = [
@@ -76,6 +90,12 @@ const MENU_ITEMS: MenuItem[] = [
     title: 'Shift Kasir',
     permission: 'shift.open',
     route: 'Shift',
+  },
+  {
+    key: 'stock',
+    title: 'Inventaris',
+    permission: 'stock.view',
+    route: 'Stock',
   },
   {
     key: 'products',
@@ -238,6 +258,31 @@ function AppNavigator() {
         name="CloseShift"
         component={CloseShiftScreen}
         options={{ title: 'Tutup Shift' }}
+      />
+      <AppStack.Screen
+        name="Stock"
+        component={StockScreen}
+        options={{ title: 'Inventaris' }}
+      />
+      <AppStack.Screen
+        name="StockOpname"
+        component={StockOpnameScreen}
+        options={{ title: 'Stock Opname' }}
+      />
+      <AppStack.Screen
+        name="StockAdjustment"
+        component={StockAdjustmentScreen}
+        options={{ title: 'Stock Adjustment' }}
+      />
+      <AppStack.Screen
+        name="StockTransfer"
+        component={StockTransferScreen}
+        options={{ title: 'Stock Transfer' }}
+      />
+      <AppStack.Screen
+        name="StockHistory"
+        component={StockHistoryScreen}
+        options={{ title: 'Riwayat Pergerakan Stok' }}
       />
       <AppStack.Screen
         name="ModulePlaceholder"
