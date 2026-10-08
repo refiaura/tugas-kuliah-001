@@ -1,6 +1,6 @@
 /**
- * Product list: search (name/SKU/barcode), pull-to-refresh, active badge.
- * Add button is only shown with the product.create permission.
+ * Product list — modern minimalist.
+ * Prominent search, compact cards with clear pricing, status badges.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -20,6 +20,8 @@ import {
   ProductResponse,
 } from '../../services/productApi';
 import { AppStackParamList } from '../../app/navigation';
+import { Badge, Button, Card, EmptyState, ScreenHeader } from '../../components';
+import { colors, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'ProductList'>;
 
@@ -87,39 +89,48 @@ export default function ProductListScreen({ navigation }: Props) {
 
   const renderItem = ({ item }: { item: ProductResponse }) => (
     <Pressable
-      style={styles.card}
       onPress={() =>
         navigation.navigate('ProductForm', { productId: item.id })
       }>
-      <View style={styles.cardHeader}>
-        <Text style={styles.name} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <View
-          style={[
-            styles.badge,
-            item.active ? styles.badgeActive : styles.badgeInactive,
-          ]}>
-          <Text
-            style={[
-              styles.badgeText,
-              item.active ? styles.badgeTextActive : styles.badgeTextInactive,
-            ]}>
-            {item.active ? 'Aktif' : 'Nonaktif'}
-          </Text>
+      <Card style={styles.card}>
+        <View style={styles.cardTop}>
+          <View style={styles.cardInfo}>
+            <Text style={styles.name} numberOfLines={1}>
+              {item.name}
+            </Text>
+            <Text style={styles.sku}>SKU · {item.sku}</Text>
+          </View>
+          <Badge
+            label={item.active ? 'Aktif' : 'Nonaktif'}
+            tone={item.active ? 'accent' : 'neutral'}
+          />
         </View>
-      </View>
-      <Text style={styles.sku}>SKU: {item.sku}</Text>
-      <Text style={styles.price}>{formatRupiah(item.sellingPrice)}</Text>
+        <Text style={styles.price}>{formatRupiah(item.sellingPrice)}</Text>
+      </Card>
     </Pressable>
   );
 
   return (
     <View style={styles.container}>
-      <View style={styles.searchRow}>
+      <ScreenHeader
+        title="Produk"
+        subtitle={`${items.length} produk terdaftar`}
+        right={
+          canCreate ? (
+            <Button
+              title="+ Tambah"
+              onPress={() => navigation.navigate('ProductForm', {})}
+              testID="product-add"
+            />
+          ) : undefined
+        }
+      />
+
+      <View style={styles.searchWrap}>
         <TextInput
           style={styles.searchInput}
           placeholder="Cari nama / SKU / barcode…"
+          placeholderTextColor={colors.textMuted}
           value={search}
           onChangeText={setSearch}
           autoCapitalize="none"
@@ -127,31 +138,24 @@ export default function ProductListScreen({ navigation }: Props) {
           returnKeyType="search"
           testID="product-search"
         />
-        {canCreate ? (
-          <Pressable
-            style={styles.addButton}
-            onPress={() => navigation.navigate('ProductForm', {})}
-            testID="product-add">
-            <Text style={styles.addButtonText}>+ Tambah</Text>
-          </Pressable>
-        ) : null}
       </View>
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : error ? (
         <View style={styles.center}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable
-            style={styles.retryButton}
+          <EmptyState title="Gagal memuat" message={error} icon="⚠" />
+          <Button
+            title="Coba lagi"
+            variant="secondary"
             onPress={() => {
               setLoading(true);
               void load(search).finally(() => setLoading(false));
-            }}>
-            <Text style={styles.retryText}>Coba lagi</Text>
-          </Pressable>
+            }}
+            style={styles.retry}
+          />
         </View>
       ) : (
         <FlatList
@@ -160,12 +164,22 @@ export default function ProductListScreen({ navigation }: Props) {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
           }
           ListEmptyComponent={
-            <View style={styles.center}>
-              <Text style={styles.emptyText}>Tidak ada produk ditemukan.</Text>
-            </View>
+            <EmptyState
+              title="Tidak ada produk"
+              message={
+                search
+                  ? 'Coba kata kunci lain.'
+                  : 'Tambah produk pertama Anda.'
+              }
+              icon="○"
+            />
           }
         />
       )}
@@ -176,121 +190,60 @@ export default function ProductListScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
-  searchRow: {
-    flexDirection: 'row',
-    padding: 12,
-    gap: 8,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+  searchWrap: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.md,
   },
   searchInput: {
-    flex: 1,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 15,
-    backgroundColor: '#fff',
-  },
-  addButton: {
-    backgroundColor: '#1565c0',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    justifyContent: 'center',
-  },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
+    borderColor: colors.border,
+    borderRadius: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    ...typography.body,
+    color: colors.text,
+    minHeight: 52,
   },
   list: {
-    padding: 12,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xxl,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 },
+    marginBottom: spacing.md,
   },
-  cardHeader: {
+  cardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  cardInfo: {
+    flex: 1,
+    marginRight: spacing.md,
   },
   name: {
-    fontSize: 16,
-    fontWeight: '700',
-    flex: 1,
-    marginRight: 8,
+    ...typography.bodyBold,
+    color: colors.text,
   },
   sku: {
-    fontSize: 13,
-    color: '#666',
+    ...typography.caption,
+    color: colors.textMuted,
     marginTop: 2,
   },
   price: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1565c0',
-    marginTop: 6,
-  },
-  badge: {
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  badgeActive: {
-    backgroundColor: '#e8f5e9',
-  },
-  badgeInactive: {
-    backgroundColor: '#f5f5f5',
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  badgeTextActive: {
-    color: '#2e7d32',
-  },
-  badgeTextInactive: {
-    color: '#999',
+    ...typography.title,
+    color: colors.primary,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: spacing.xxl,
   },
-  errorText: {
-    color: '#c62828',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  retryButton: {
-    backgroundColor: '#1565c0',
-    borderRadius: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  retryText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  emptyText: {
-    color: '#999',
-    textAlign: 'center',
-    marginTop: 32,
+  retry: {
+    marginTop: spacing.lg,
   },
 });

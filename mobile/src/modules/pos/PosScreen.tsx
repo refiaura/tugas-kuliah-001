@@ -1,5 +1,6 @@
 /**
- * POS screen: search products, build cart, hold or go to payment.
+ * POS screen — modern minimalist.
+ * Prominent search, compact product cards, sticky cart footer with big Bayar button.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -29,6 +30,8 @@ import {
   useCartStore,
 } from '../../stores/cartStore';
 import { AppStackParamList } from '../../app/navigation';
+import { Button, Card, EmptyState } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Pos'>;
 
@@ -195,26 +198,38 @@ export default function PosScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Cari nama / SKU / barcode…"
-          value={search}
-          onChangeText={setSearch}
-          autoCorrect={false}
-        />
-        {searching && <ActivityIndicator style={styles.searchSpinner} />}
+      {/* Prominent search */}
+      <View style={styles.searchWrap}>
+        <View style={styles.searchBox}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Cari nama / SKU / barcode…"
+            placeholderTextColor={colors.textMuted}
+            value={search}
+            onChangeText={setSearch}
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+          {searching && (
+            <ActivityIndicator size="small" color={colors.primary} />
+          )}
+        </View>
       </View>
 
+      {/* Search results */}
       {search.trim().length > 0 && (
-        <View style={styles.resultsBox}>
+        <Card style={styles.resultsCard} padding={0}>
           <FlatList
             data={results}
             keyExtractor={p => String(p.id)}
             keyboardShouldPersistTaps="handled"
-            renderItem={({ item: p }) => (
+            style={styles.resultsList}
+            renderItem={({ item: p, index }) => (
               <Pressable
-                style={styles.resultItem}
+                style={[
+                  styles.resultItem,
+                  index > 0 && styles.resultDivider,
+                ]}
                 onPress={() => {
                   addItem({
                     productId: p.id,
@@ -225,7 +240,9 @@ export default function PosScreen({ navigation }: Props) {
                   setSearch('');
                 }}>
                 <View style={styles.resultInfo}>
-                  <Text style={styles.resultName}>{p.name}</Text>
+                  <Text style={styles.resultName} numberOfLines={1}>
+                    {p.name}
+                  </Text>
                   <Text style={styles.resultMeta}>{p.sku}</Text>
                 </View>
                 <Text style={styles.resultPrice}>
@@ -235,26 +252,35 @@ export default function PosScreen({ navigation }: Props) {
             )}
             ListEmptyComponent={
               !searching ? (
-                <Text style={styles.emptyText}>Tidak ada produk ditemukan.</Text>
+                <EmptyState
+                  title="Tidak ditemukan"
+                  message="Coba kata kunci lain."
+                  icon="○"
+                />
               ) : undefined
             }
           />
-        </View>
+        </Card>
       )}
 
+      {/* Cart header */}
       <View style={styles.cartHeader}>
-        <Text style={styles.cartTitle}>Keranjang</Text>
+        <Text style={styles.cartTitle}>
+          Keranjang{items.length > 0 ? ` · ${items.length}` : ''}
+        </Text>
         <Pressable onPress={() => void openHeld()} hitSlop={8}>
           <Text style={styles.heldLink}>Transaksi tertahan</Text>
         </Pressable>
       </View>
 
+      {/* Cart items */}
       <FlatList
         data={items}
         keyExtractor={i => String(i.productId)}
         style={styles.cartList}
+        contentContainerStyle={styles.cartContent}
         renderItem={({ item }) => (
-          <View style={styles.cartItem}>
+          <Card style={styles.cartItem}>
             <View style={styles.cartInfo}>
               <Text style={styles.cartName} numberOfLines={1}>
                 {item.name}
@@ -265,6 +291,7 @@ export default function PosScreen({ navigation }: Props) {
               <TextInput
                 style={styles.discInput}
                 placeholder="Diskon (Rp)"
+                placeholderTextColor={colors.textMuted}
                 keyboardType="numeric"
                 defaultValue={item.discount > 0 ? String(item.discount) : ''}
                 onEndEditing={e => {
@@ -276,33 +303,39 @@ export default function PosScreen({ navigation }: Props) {
                 }}
               />
             </View>
-            <View style={styles.qtyRow}>
-              <Pressable
-                style={styles.qtyBtn}
-                onPress={() => updateQty(item.productId, item.qty - 1)}>
-                <Text style={styles.qtyBtnText}>−</Text>
-              </Pressable>
-              <Text style={styles.qtyText}>{item.qty}</Text>
-              <Pressable
-                style={styles.qtyBtn}
-                onPress={() => updateQty(item.productId, item.qty + 1)}>
-                <Text style={styles.qtyBtnText}>+</Text>
-              </Pressable>
+            <View style={styles.qtyCol}>
+              <View style={styles.qtyRow}>
+                <Pressable
+                  style={styles.qtyBtn}
+                  onPress={() => updateQty(item.productId, item.qty - 1)}>
+                  <Text style={styles.qtyBtnText}>−</Text>
+                </Pressable>
+                <Text style={styles.qtyText}>{item.qty}</Text>
+                <Pressable
+                  style={styles.qtyBtn}
+                  onPress={() => updateQty(item.productId, item.qty + 1)}>
+                  <Text style={styles.qtyBtnText}>+</Text>
+                </Pressable>
+              </View>
               <Pressable
                 style={styles.removeBtn}
-                onPress={() => removeItem(item.productId)}>
-                <Text style={styles.removeText}>✕</Text>
+                onPress={() => removeItem(item.productId)}
+                hitSlop={8}>
+                <Text style={styles.removeText}>Hapus</Text>
               </Pressable>
             </View>
-          </View>
+          </Card>
         )}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            Keranjang kosong. Cari produk di atas untuk menambah.
-          </Text>
+          <EmptyState
+            title="Keranjang kosong"
+            message="Cari produk di atas untuk menambah."
+            icon="○"
+          />
         }
       />
 
+      {/* Sticky footer */}
       <View style={styles.footer}>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Subtotal</Text>
@@ -316,32 +349,29 @@ export default function PosScreen({ navigation }: Props) {
             </Text>
           </View>
         )}
-        <View style={styles.totalRow}>
+        <View style={[styles.totalRow, styles.grandRow]}>
           <Text style={styles.grandLabel}>Total</Text>
           <Text style={styles.grandValue}>{formatRupiah(grandTotal)}</Text>
         </View>
         <View style={styles.actionRow}>
-          <Pressable
-            style={[styles.actionBtn, styles.holdBtn]}
+          <Button
+            title={holding ? 'Menahan…' : 'Tahan'}
+            variant="secondary"
             onPress={onHold}
-            disabled={holding || items.length === 0}>
-            <Text style={styles.holdBtnText}>
-              {holding ? 'Menahan…' : 'Tahan'}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[
-              styles.actionBtn,
-              styles.payBtn,
-              items.length === 0 && styles.payBtnDisabled,
-            ]}
+            disabled={holding || items.length === 0}
+            style={styles.holdBtn}
+          />
+          <Button
+            title="Bayar"
+            size="lg"
             onPress={goToPayment}
-            disabled={items.length === 0}>
-            <Text style={styles.payBtnText}>Bayar</Text>
-          </Pressable>
+            disabled={items.length === 0}
+            style={styles.payBtn}
+          />
         </View>
       </View>
 
+      {/* Held sales modal */}
       <Modal
         visible={heldModalVisible}
         animationType="slide"
@@ -349,36 +379,45 @@ export default function PosScreen({ navigation }: Props) {
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>Transaksi Tertahan</Text>
           {loadingHeld ? (
-            <ActivityIndicator style={styles.modalSpinner} />
+            <ActivityIndicator
+              size="large"
+              color={colors.primary}
+              style={styles.modalSpinner}
+            />
           ) : (
             <FlatList
               data={heldSales}
               keyExtractor={s => String(s.id)}
+              contentContainerStyle={styles.modalList}
               renderItem={({ item: s }) => (
-                <Pressable
-                  style={styles.heldItem}
-                  onPress={() => onResumeHeld(s)}>
-                  <View>
-                    <Text style={styles.heldInvoice}>{s.invoiceNo}</Text>
-                    <Text style={styles.heldMeta}>
-                      {s.items.length} item · {formatRupiah(s.grandTotal)}
-                    </Text>
-                  </View>
-                  <Text style={styles.heldChevron}>›</Text>
+                <Pressable onPress={() => onResumeHeld(s)}>
+                  <Card style={styles.heldItem}>
+                    <View style={styles.heldInfo}>
+                      <Text style={styles.heldInvoice}>{s.invoiceNo}</Text>
+                      <Text style={styles.heldMeta}>
+                        {s.items.length} item · {formatRupiah(s.grandTotal)}
+                      </Text>
+                    </View>
+                    <Text style={styles.heldChevron}>›</Text>
+                  </Card>
                 </Pressable>
               )}
               ListEmptyComponent={
-                <Text style={styles.emptyText}>
-                  Tidak ada transaksi tertahan.
-                </Text>
+                <EmptyState
+                  title="Tidak ada"
+                  message="Tidak ada transaksi tertahan."
+                  icon="○"
+                />
               }
             />
           )}
-          <Pressable
-            style={styles.modalClose}
-            onPress={() => setHeldModalVisible(false)}>
-            <Text style={styles.modalCloseText}>Tutup</Text>
-          </Pressable>
+          <View style={styles.modalFooter}>
+            <Button
+              title="Tutup"
+              variant="secondary"
+              onPress={() => setHeldModalVisible(false)}
+            />
+          </View>
         </View>
       </Modal>
     </View>
@@ -386,140 +425,236 @@ export default function PosScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  searchRow: {
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  searchWrap: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.sm,
+  },
+  searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    paddingBottom: 4,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    minHeight: 56,
   },
   searchInput: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
+    ...typography.body,
+    color: colors.text,
+    paddingVertical: spacing.md,
   },
-  searchSpinner: { marginLeft: 8 },
-  resultsBox: {
-    maxHeight: 220,
-    marginHorizontal: 12,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    elevation: 2,
+  resultsCard: {
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.sm,
+    maxHeight: 240,
+  },
+  resultsList: {
+    maxHeight: 240,
   },
   resultItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
+    padding: spacing.lg,
   },
-  resultInfo: { flex: 1, marginRight: 8 },
-  resultName: { fontSize: 15, fontWeight: '600' },
-  resultMeta: { fontSize: 12, color: '#888' },
-  resultPrice: { fontSize: 14, fontWeight: '700', color: '#2e7d32' },
+  resultDivider: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  resultInfo: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  resultName: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  resultMeta: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  resultPrice: {
+    ...typography.bodyBold,
+    color: colors.primary,
+  },
   cartHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
-  cartTitle: { fontSize: 16, fontWeight: '700' },
-  heldLink: { color: '#1565c0', fontSize: 14, fontWeight: '600' },
-  cartList: { flex: 1, paddingHorizontal: 12 },
+  cartTitle: {
+    ...typography.subtitle,
+    color: colors.text,
+  },
+  heldLink: {
+    ...typography.bodyBold,
+    color: colors.primary,
+  },
+  cartList: {
+    flex: 1,
+  },
+  cartContent: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.md,
+  },
   cartItem: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 12,
-    marginVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  cartInfo: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  cartName: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  cartMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  discInput: {
+    marginTop: spacing.sm,
+    backgroundColor: colors.slate[100],
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    ...typography.caption,
+    color: colors.text,
+    width: 140,
+  },
+  qtyCol: {
+    alignItems: 'flex-end',
+  },
+  qtyRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  cartInfo: { flex: 1, marginRight: 8 },
-  cartName: { fontSize: 15, fontWeight: '600' },
-  cartMeta: { fontSize: 12, color: '#666', marginTop: 2 },
-  discInput: {
-    marginTop: 6,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    fontSize: 13,
-    width: 130,
-  },
-  qtyRow: { flexDirection: 'row', alignItems: 'center' },
   qtyBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#e3f2fd',
+    width: 32,
+    height: 32,
+    borderRadius: radius.full,
+    backgroundColor: colors.slate[100],
     justifyContent: 'center',
     alignItems: 'center',
   },
-  qtyBtnText: { fontSize: 18, color: '#1565c0', fontWeight: '700' },
-  qtyText: { minWidth: 28, textAlign: 'center', fontSize: 15, fontWeight: '600' },
-  removeBtn: { marginLeft: 8, padding: 4 },
-  removeText: { color: '#c62828', fontSize: 16 },
-  emptyText: { color: '#888', textAlign: 'center', padding: 24 },
+  qtyBtnText: {
+    fontSize: 18,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  qtyText: {
+    minWidth: 32,
+    textAlign: 'center',
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  removeBtn: {
+    marginTop: spacing.sm,
+    padding: spacing.xs,
+  },
+  removeText: {
+    ...typography.caption,
+    color: colors.danger[600],
+    fontWeight: '600',
+  },
   footer: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#ddd',
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xl,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
-  totalLabel: { fontSize: 14, color: '#666' },
-  totalValue: { fontSize: 14, fontWeight: '600' },
-  grandLabel: { fontSize: 16, fontWeight: '700' },
-  grandValue: { fontSize: 18, fontWeight: '800', color: '#2e7d32' },
-  actionRow: { flexDirection: 'row', marginTop: 12, gap: 12 },
-  actionBtn: {
+  totalLabel: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  totalValue: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  grandRow: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  grandLabel: {
+    ...typography.title,
+    color: colors.text,
+  },
+  grandValue: {
+    ...typography.title,
+    color: colors.primary,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  holdBtn: {
     flex: 1,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
   },
-  holdBtn: { backgroundColor: '#fff3e0', borderWidth: 1, borderColor: '#ffb74d' },
-  holdBtnText: { color: '#e65100', fontWeight: '700', fontSize: 16 },
-  payBtn: { backgroundColor: '#2e7d32' },
-  payBtnDisabled: { backgroundColor: '#a5d6a7' },
-  payBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  modalContainer: { flex: 1, backgroundColor: '#f5f5f5', paddingTop: 48 },
+  payBtn: {
+    flex: 2,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+    paddingTop: spacing.huge,
+  },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...typography.title,
+    color: colors.text,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.lg,
   },
-  modalSpinner: { marginTop: 32 },
+  modalSpinner: {
+    marginTop: spacing.xxxl,
+  },
+  modalList: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.md,
+  },
   heldItem: {
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginVertical: 6,
-    borderRadius: 10,
-    padding: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: spacing.md,
   },
-  heldInvoice: { fontSize: 15, fontWeight: '700' },
-  heldMeta: { fontSize: 12, color: '#666', marginTop: 2 },
-  heldChevron: { fontSize: 22, color: '#999' },
-  modalClose: {
-    margin: 16,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
+  heldInfo: {
+    flex: 1,
   },
-  modalCloseText: { fontWeight: '700', fontSize: 16 },
+  heldInvoice: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  heldMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  heldChevron: {
+    fontSize: 24,
+    color: colors.textMuted,
+  },
+  modalFooter: {
+    padding: spacing.xl,
+  },
 });

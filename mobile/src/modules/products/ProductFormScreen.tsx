@@ -1,5 +1,6 @@
 /**
- * Product form: create new or edit existing.
+ * Product form — modern minimalist.
+ * Fields grouped in cards, shared Input components, sticky save button.
  *
  * - Create: POST /products (needs product.create).
  * - Edit: PUT /products/{id} for basic fields (needs product.update);
@@ -18,7 +19,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -32,6 +32,8 @@ import {
   updateProductPrice,
 } from '../../services/productApi';
 import { AppStackParamList } from '../../app/navigation';
+import { Button, Card, Input, ScreenHeader } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'ProductForm'>;
 
@@ -47,6 +49,10 @@ const UNITS = [
 function parsePrice(text: string): number | null {
   const n = Number(text.replace(/[^\d.-]/g, ''));
   return text.trim() === '' || Number.isNaN(n) ? null : n;
+}
+
+function SectionLabel({ children }: { children: string }) {
+  return <Text style={styles.sectionLabel}>{children}</Text>;
 }
 
 export default function ProductFormScreen({ navigation, route }: Props) {
@@ -201,7 +207,7 @@ export default function ProductFormScreen({ navigation, route }: Props) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -210,149 +216,202 @@ export default function ProductFormScreen({ navigation, route }: Props) {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.label}>SKU *</Text>
-        <TextInput
-          style={[styles.input, isEdit && styles.inputDisabled]}
-          value={sku}
-          onChangeText={setSku}
-          autoCapitalize="characters"
-          autoCorrect={false}
-          editable={!isEdit && !saving}
-          testID="product-sku"
-        />
+      <ScreenHeader
+        title={isEdit ? 'Edit Produk' : 'Tambah Produk'}
+        subtitle={
+          isEdit ? 'Perbarui detail produk' : 'Lengkapi detail produk baru'
+        }
+      />
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled">
+        {/* Basic info */}
+        <SectionLabel>Informasi produk</SectionLabel>
+        <Card style={styles.card}>
+          <Input
+            label="SKU *"
+            value={sku}
+            onChangeText={setSku}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            editable={!isEdit && !saving}
+            testID="product-sku"
+            containerStyle={styles.lastInput}
+          />
+          <Input
+            label="Barcode"
+            value={barcode}
+            onChangeText={setBarcode}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!saving}
+            testID="product-barcode"
+            containerStyle={styles.lastInput}
+          />
+          <Input
+            label="Nama produk *"
+            value={name}
+            onChangeText={setName}
+            editable={!saving}
+            testID="product-name"
+            containerStyle={styles.lastInput}
+          />
+        </Card>
 
-        <Text style={styles.label}>Barcode</Text>
-        <TextInput
-          style={styles.input}
-          value={barcode}
-          onChangeText={setBarcode}
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={!saving}
-          testID="product-barcode"
-        />
-
-        <Text style={styles.label}>Nama produk *</Text>
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          editable={!saving}
-          testID="product-name"
-        />
-
-        <Text style={styles.label}>Kategori</Text>
-        <Pressable
-          style={styles.picker}
-          onPress={() => setShowCategoryPicker(v => !v)}
-          disabled={saving}
-          testID="product-category">
-          <Text style={selectedCategory ? styles.pickerText : styles.pickerPlaceholder}>
-            {selectedCategory ? selectedCategory.name : 'Pilih kategori…'}
-          </Text>
-          <Text style={styles.pickerChevron}>▾</Text>
-        </Pressable>
-        {showCategoryPicker ? (
-          <View style={styles.options}>
-            <Pressable
-              style={styles.option}
-              onPress={() => {
-                setCategoryId(null);
-                setShowCategoryPicker(false);
-              }}>
-              <Text style={styles.optionText}>— Tanpa kategori —</Text>
-            </Pressable>
-            {categories.map(c => (
+        {/* Category & unit */}
+        <SectionLabel>Kategori & satuan</SectionLabel>
+        <Card style={styles.card}>
+          <Text style={styles.pickerLabel}>Kategori</Text>
+          <Pressable
+            style={styles.picker}
+            onPress={() => setShowCategoryPicker(v => !v)}
+            disabled={saving}
+            testID="product-category">
+            <Text
+              style={
+                selectedCategory
+                  ? styles.pickerText
+                  : styles.pickerPlaceholder
+              }>
+              {selectedCategory ? selectedCategory.name : 'Pilih kategori…'}
+            </Text>
+            <Text style={styles.pickerChevron}>▾</Text>
+          </Pressable>
+          {showCategoryPicker ? (
+            <View style={styles.options}>
               <Pressable
-                key={c.id}
                 style={styles.option}
                 onPress={() => {
-                  setCategoryId(c.id);
+                  setCategoryId(null);
                   setShowCategoryPicker(false);
                 }}>
-                <Text style={styles.optionText}>{c.name}</Text>
+                <Text style={styles.optionText}>— Tanpa kategori —</Text>
               </Pressable>
-            ))}
+              {categories.map(c => (
+                <Pressable
+                  key={c.id}
+                  style={[
+                    styles.option,
+                    c.id === categoryId && styles.optionSelected,
+                  ]}
+                  onPress={() => {
+                    setCategoryId(c.id);
+                    setShowCategoryPicker(false);
+                  }}>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      c.id === categoryId && styles.optionTextSelected,
+                    ]}>
+                    {c.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+
+          <Text style={[styles.pickerLabel, styles.pickerLabelSpaced]}>
+            Satuan
+          </Text>
+          <Pressable
+            style={styles.picker}
+            onPress={() => setShowUnitPicker(v => !v)}
+            disabled={saving}
+            testID="product-unit">
+            <Text style={styles.pickerText}>{selectedUnit.code}</Text>
+            <Text style={styles.pickerChevron}>▾</Text>
+          </Pressable>
+          {showUnitPicker ? (
+            <View style={styles.options}>
+              {UNITS.map(u => (
+                <Pressable
+                  key={u.id}
+                  style={[
+                    styles.option,
+                    u.id === unitId && styles.optionSelected,
+                  ]}
+                  onPress={() => {
+                    setUnitId(u.id);
+                    setShowUnitPicker(false);
+                  }}>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      u.id === unitId && styles.optionTextSelected,
+                    ]}>
+                    {u.code}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+        </Card>
+
+        {/* Pricing */}
+        <SectionLabel>Harga</SectionLabel>
+        <Card style={styles.card}>
+          <Input
+            label="Harga beli (Rp) *"
+            value={purchasePrice}
+            onChangeText={setPurchasePrice}
+            keyboardType="numeric"
+            editable={!saving}
+            testID="product-purchase-price"
+            containerStyle={styles.lastInput}
+          />
+          <Input
+            label="Harga jual (Rp) *"
+            value={sellingPrice}
+            onChangeText={setSellingPrice}
+            keyboardType="numeric"
+            editable={!saving}
+            testID="product-selling-price"
+            containerStyle={styles.lastInput}
+          />
+        </Card>
+
+        {/* Stock & status */}
+        <SectionLabel>Stok & status</SectionLabel>
+        <Card style={styles.card}>
+          <Input
+            label="Stok minimum"
+            value={minimumStock}
+            onChangeText={setMinimumStock}
+            keyboardType="numeric"
+            editable={!saving}
+            hint="Peringatan stok menipis muncul di bawah angka ini."
+            testID="product-min-stock"
+            containerStyle={styles.lastInput}
+          />
+          <View style={styles.switchRow}>
+            <View>
+              <Text style={styles.switchLabel}>Produk aktif</Text>
+              <Text style={styles.switchHint}>
+                Produk nonaktif tidak muncul di kasir.
+              </Text>
+            </View>
+            <Switch
+              value={active}
+              onValueChange={setActive}
+              disabled={saving}
+              trackColor={{ true: colors.primary, false: colors.slate[200] }}
+            />
           </View>
-        ) : null}
-
-        <Text style={styles.label}>Satuan</Text>
-        <Pressable
-          style={styles.picker}
-          onPress={() => setShowUnitPicker(v => !v)}
-          disabled={saving}
-          testID="product-unit">
-          <Text style={styles.pickerText}>{selectedUnit.code}</Text>
-          <Text style={styles.pickerChevron}>▾</Text>
-        </Pressable>
-        {showUnitPicker ? (
-          <View style={styles.options}>
-            {UNITS.map(u => (
-              <Pressable
-                key={u.id}
-                style={styles.option}
-                onPress={() => {
-                  setUnitId(u.id);
-                  setShowUnitPicker(false);
-                }}>
-                <Text style={styles.optionText}>{u.code}</Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
-
-        <Text style={styles.label}>Harga beli *</Text>
-        <TextInput
-          style={styles.input}
-          value={purchasePrice}
-          onChangeText={setPurchasePrice}
-          keyboardType="numeric"
-          editable={!saving}
-          testID="product-purchase-price"
-        />
-
-        <Text style={styles.label}>Harga jual *</Text>
-        <TextInput
-          style={styles.input}
-          value={sellingPrice}
-          onChangeText={setSellingPrice}
-          keyboardType="numeric"
-          editable={!saving}
-          testID="product-selling-price"
-        />
-
-        <Text style={styles.label}>Stok minimum</Text>
-        <TextInput
-          style={styles.input}
-          value={minimumStock}
-          onChangeText={setMinimumStock}
-          keyboardType="numeric"
-          editable={!saving}
-          testID="product-min-stock"
-        />
-
-        <View style={styles.switchRow}>
-          <Text style={styles.label}>Aktif</Text>
-          <Switch value={active} onValueChange={setActive} disabled={saving} />
-        </View>
+        </Card>
 
         {formError ? <Text style={styles.error}>{formError}</Text> : null}
-
-        <Pressable
-          style={[styles.button, saving && styles.buttonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-          testID="product-save">
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>
-              {isEdit ? 'Simpan perubahan' : 'Tambah produk'}
-            </Text>
-          )}
-        </Pressable>
       </ScrollView>
+
+      <View style={styles.footer}>
+        <Button
+          title={isEdit ? 'Simpan perubahan' : 'Tambah produk'}
+          size="lg"
+          onPress={handleSave}
+          loading={saving}
+          disabled={saving}
+          testID="product-save"
+        />
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -360,99 +419,114 @@ export default function ProductFormScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.background,
   },
   content: {
-    padding: 16,
-    paddingBottom: 32,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.md,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 6,
-    marginTop: 12,
+  sectionLabel: {
+    ...typography.subtitle,
+    color: colors.text,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    backgroundColor: '#fff',
+  card: {
+    marginBottom: spacing.sm,
   },
-  inputDisabled: {
-    backgroundColor: '#eee',
-    color: '#888',
+  lastInput: {
+    marginBottom: 0,
+  },
+  pickerLabel: {
+    ...typography.small,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  pickerLabelSpaced: {
+    marginTop: spacing.md,
   },
   picker: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    minHeight: 52,
   },
   pickerText: {
-    fontSize: 16,
+    ...typography.body,
+    color: colors.text,
   },
   pickerPlaceholder: {
-    fontSize: 16,
-    color: '#999',
+    ...typography.body,
+    color: colors.textMuted,
   },
   pickerChevron: {
     fontSize: 16,
-    color: '#999',
+    color: colors.textMuted,
   },
   options: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    marginTop: 4,
-    maxHeight: 200,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    marginTop: spacing.sm,
+    overflow: 'hidden',
   },
   option: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.border,
+  },
+  optionSelected: {
+    backgroundColor: colors.primarySoft,
   },
   optionText: {
-    fontSize: 15,
+    ...typography.body,
+    color: colors.text,
+  },
+  optionTextSelected: {
+    color: colors.primaryDark,
+    fontWeight: '600',
   },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 12,
+    paddingTop: spacing.sm,
+  },
+  switchLabel: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  switchHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   error: {
-    color: '#c62828',
-    marginTop: 12,
-    fontSize: 14,
+    ...typography.body,
+    color: colors.danger[600],
+    marginTop: spacing.md,
+    textAlign: 'center',
   },
-  button: {
-    backgroundColor: '#1565c0',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+  footer: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
 });

@@ -1,6 +1,6 @@
 /**
- * Payment screen: split payment across methods, change calculation,
- * then checkout (or resume a held sale).
+ * Payment screen — modern minimalist.
+ * Hero total card, method chips, change highlight.
  */
 import React, { useMemo, useState } from 'react';
 import {
@@ -28,6 +28,8 @@ import {
 } from '../../stores/cartStore';
 import { useShiftStore } from '../../stores/shiftStore';
 import { AppStackParamList } from '../../app/navigation';
+import { Button, Card, EmptyState } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Payment'>;
 
@@ -191,61 +193,60 @@ export default function PaymentScreen({ navigation, route }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Total belanja</Text>
-          <Text style={styles.summaryTotal}>{formatRupiah(grandTotal)}</Text>
-        </View>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Sudah dibayar</Text>
-          <Text style={styles.summaryValue}>{formatRupiah(paidTotal)}</Text>
-        </View>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Sisa</Text>
-          <Text
-            style={[
-              styles.summaryValue,
-              remaining === 0 && styles.okText,
-            ]}>
-            {formatRupiah(remaining)}
-          </Text>
-        </View>
-        {change > 0 && (
+      {/* Summary hero */}
+      <Card style={styles.summary}>
+        <Text style={styles.summaryLabel}>Total yang harus dibayar</Text>
+        <Text style={styles.summaryTotal}>{formatRupiah(grandTotal)}</Text>
+        <View style={styles.summaryRows}>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Kembalian</Text>
-            <Text style={styles.changeText}>{formatRupiah(change)}</Text>
+            <Text style={styles.rowLabel}>Sudah dibayar</Text>
+            <Text style={styles.rowValue}>{formatRupiah(paidTotal)}</Text>
           </View>
-        )}
-      </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.rowLabel}>Sisa</Text>
+            <Text style={[styles.rowValue, remaining === 0 && styles.okText]}>
+              {formatRupiah(remaining)}
+            </Text>
+          </View>
+          {change > 0 && (
+            <View style={[styles.summaryRow, styles.changeRow]}>
+              <Text style={styles.changeLabel}>Kembalian</Text>
+              <Text style={styles.changeValue}>{formatRupiah(change)}</Text>
+            </View>
+          )}
+        </View>
+      </Card>
 
+      {/* Methods */}
       <Text style={styles.sectionTitle}>Metode pembayaran</Text>
       <View style={styles.methodGrid}>
-        {PAYMENT_METHODS.map(m => (
-          <Pressable
-            key={m.id}
-            style={[
-              styles.methodChip,
-              methodId === m.id && styles.methodChipActive,
-            ]}
-            onPress={() => setMethodId(m.id)}>
-            <Text
-              style={[
-                styles.methodText,
-                methodId === m.id && styles.methodTextActive,
-              ]}>
-              {m.name}
-            </Text>
-          </Pressable>
-        ))}
+        {PAYMENT_METHODS.map(m => {
+          const active = methodId === m.id;
+          return (
+            <Pressable
+              key={m.id}
+              style={[styles.methodChip, active && styles.methodChipActive]}
+              onPress={() => setMethodId(m.id)}>
+              <Text
+                style={[styles.methodText, active && styles.methodTextActive]}>
+                {m.name}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
+      {/* Amount entry */}
       <View style={styles.amountRow}>
         <TextInput
           style={styles.amountInput}
           placeholder="Jumlah (Rp)"
+          placeholderTextColor={colors.textMuted}
           value={amountText}
           onChangeText={setAmountText}
           keyboardType="numeric"
+          returnKeyType="done"
+          onSubmitEditing={addPayment}
         />
         <Pressable style={styles.quickBtn} onPress={quickCash}>
           <Text style={styles.quickText}>Uang pas</Text>
@@ -255,12 +256,14 @@ export default function PaymentScreen({ navigation, route }: Props) {
         </Pressable>
       </View>
 
+      {/* Added payments */}
       <FlatList
         data={payments}
         keyExtractor={p => p.key}
         style={styles.payList}
+        contentContainerStyle={styles.payContent}
         renderItem={({ item: p }) => (
-          <View style={styles.payItem}>
+          <Card style={styles.payItem} padding={spacing.md}>
             <View>
               <Text style={styles.payName}>{p.methodName}</Text>
               <Text style={styles.payAmount}>{formatRupiah(p.amount)}</Text>
@@ -268,107 +271,180 @@ export default function PaymentScreen({ navigation, route }: Props) {
             <Pressable onPress={() => removePayment(p.key)} hitSlop={8}>
               <Text style={styles.removeText}>Hapus</Text>
             </Pressable>
-          </View>
+          </Card>
         )}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            Belum ada pembayaran. Tambahkan di atas (bisa lebih dari satu).
-          </Text>
+          <EmptyState
+            title="Belum ada pembayaran"
+            message="Tambahkan di atas — bisa lebih dari satu."
+            icon="○"
+          />
         }
       />
 
-      <Pressable
-        style={[
-          styles.processBtn,
-          (paidTotal < grandTotal || processing) && styles.processBtnDisabled,
-        ]}
-        onPress={process}
-        disabled={paidTotal < grandTotal || processing}>
-        {processing ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.processText}>Proses Pembayaran</Text>
-        )}
-      </Pressable>
+      {/* Process */}
+      <View style={styles.footer}>
+        <Button
+          title="Proses Pembayaran"
+          size="lg"
+          onPress={process}
+          loading={processing}
+          disabled={paidTotal < grandTotal || processing}
+        />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 16 },
-  summaryCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    padding: spacing.xl,
+  },
+  summary: {
+    marginBottom: spacing.xl,
+    alignItems: 'center',
+  },
+  summaryLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  summaryTotal: {
+    ...typography.display,
+    color: colors.primary,
+    fontSize: 34,
+    marginTop: spacing.xs,
+  },
+  summaryRows: {
+    width: '100%',
+    marginTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.md,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: spacing.xs,
   },
-  summaryLabel: { fontSize: 14, color: '#666' },
-  summaryTotal: { fontSize: 20, fontWeight: '800', color: '#2e7d32' },
-  summaryValue: { fontSize: 15, fontWeight: '600' },
-  okText: { color: '#2e7d32' },
-  changeText: { fontSize: 16, fontWeight: '800', color: '#1565c0' },
-  sectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 8 },
-  methodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  rowLabel: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  rowValue: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  okText: {
+    color: colors.primary,
+  },
+  changeRow: {
+    marginTop: spacing.sm,
+  },
+  changeLabel: {
+    ...typography.subtitle,
+    color: colors.text,
+  },
+  changeValue: {
+    ...typography.title,
+    color: colors.primary,
+  },
+  sectionTitle: {
+    ...typography.subtitle,
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  methodGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
   methodChip: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
   },
-  methodChipActive: { borderColor: '#2e7d32', backgroundColor: '#e8f5e9' },
-  methodText: { fontSize: 14, color: '#333' },
-  methodTextActive: { color: '#2e7d32', fontWeight: '700' },
-  amountRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  methodChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+  },
+  methodText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  methodTextActive: {
+    color: colors.primaryDark,
+    fontWeight: '600',
+  },
+  amountRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
   amountInput: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    ...typography.body,
+    color: colors.text,
+    minHeight: 52,
   },
   quickBtn: {
-    backgroundColor: '#e3f2fd',
-    borderRadius: 10,
+    backgroundColor: colors.slate[100],
+    borderRadius: radius.lg,
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: spacing.lg,
   },
-  quickText: { color: '#1565c0', fontWeight: '600' },
+  quickText: {
+    ...typography.bodyBold,
+    color: colors.primary,
+  },
   addBtn: {
-    backgroundColor: '#2e7d32',
-    borderRadius: 10,
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
     justifyContent: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: spacing.lg,
   },
-  addText: { color: '#fff', fontWeight: '700' },
-  payList: { flex: 1 },
+  addText: {
+    ...typography.bodyBold,
+    color: colors.white,
+  },
+  payList: {
+    flex: 1,
+  },
+  payContent: {
+    paddingBottom: spacing.sm,
+  },
   payItem: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: spacing.sm,
   },
-  payName: { fontSize: 14, fontWeight: '600' },
-  payAmount: { fontSize: 14, color: '#2e7d32', fontWeight: '700', marginTop: 2 },
-  removeText: { color: '#c62828', fontWeight: '600' },
-  emptyText: { color: '#888', textAlign: 'center', padding: 16 },
-  processBtn: {
-    backgroundColor: '#2e7d32',
-    borderRadius: 10,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
+  payName: {
+    ...typography.bodyBold,
+    color: colors.text,
   },
-  processBtnDisabled: { backgroundColor: '#a5d6a7' },
-  processText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  payAmount: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  removeText: {
+    ...typography.bodyBold,
+    color: colors.danger[600],
+  },
+  footer: {
+    paddingTop: spacing.md,
+  },
 });
