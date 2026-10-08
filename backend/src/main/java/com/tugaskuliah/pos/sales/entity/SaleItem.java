@@ -49,4 +49,7 @@ public class SaleItem {
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal subtotal;
+
+    @Column(name = "returned_qty", nullable = false, precision = 19, scale = 2)
+    private BigDecimal returnedQty = BigDecimal.ZERO; // qty already returned (partial returns)
 }

@@ -10,6 +10,7 @@ import com.tugaskuliah.pos.common.exception.ApiException;
 import com.tugaskuliah.pos.common.exception.ErrorCode;
 import com.tugaskuliah.pos.common.security.JwtService;
 import com.tugaskuliah.pos.common.security.UserPrincipal;
+import com.tugaskuliah.pos.control.service.AuditService;
 import com.tugaskuliah.pos.user.dto.UserResponse;
 import com.tugaskuliah.pos.user.entity.Permission;
 import com.tugaskuliah.pos.user.entity.Role;
@@ -45,6 +46,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final UserMapper userMapper;
     private final PlatformTransactionManager transactionManager;
+    private final AuditService auditService;
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
@@ -59,6 +61,7 @@ public class AuthService {
         }
         TokenResponse token = issueTokens(user);
         log.info("User logged in: id={} username={}", user.getId(), user.getUsername());
+        auditService.log(user.getUsername(), "USER_LOGIN", "USER", user.getId());
         return new LoginResponse(token, userMapper.toResponse(user));
     }
 
@@ -91,7 +94,10 @@ public class AuthService {
     @Transactional
     public void logout(RefreshTokenRequest request) {
         String hash = JwtService.sha256Hex(request.refreshToken());
-        refreshTokenRepository.findByTokenHash(hash).ifPresent(t -> t.setRevoked(true));
+        refreshTokenRepository.findByTokenHash(hash).ifPresent(t -> {
+            t.setRevoked(true);
+            auditService.log(t.getUser().getUsername(), "USER_LOGOUT", "USER", t.getUser().getId());
+        });
     }
 
     @Transactional(readOnly = true)

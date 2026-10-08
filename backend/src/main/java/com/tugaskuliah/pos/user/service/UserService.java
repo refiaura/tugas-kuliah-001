@@ -2,6 +2,7 @@ package com.tugaskuliah.pos.user.service;
 
 import com.tugaskuliah.pos.common.exception.ApiException;
 import com.tugaskuliah.pos.common.security.UserPrincipal;
+import com.tugaskuliah.pos.control.service.AuditService;
 import com.tugaskuliah.pos.user.dto.CreateUserRequest;
 import com.tugaskuliah.pos.user.dto.UpdateUserRequest;
 import com.tugaskuliah.pos.user.dto.UserResponse;
@@ -29,6 +30,7 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public Page<UserResponse> list(String search, Pageable pageable) {
@@ -58,7 +60,10 @@ public class UserService {
         user.setActive(true);
         user.setRoles(resolveRoles(request.roles()));
         user.setCreatedBy(currentUserId());
-        return userMapper.toResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        auditService.log(currentUsername(), "USER_CREATED", "USER", saved.getId(),
+                null, java.util.Map.of("username", saved.getUsername()));
+        return userMapper.toResponse(saved);
     }
 
     @Transactional
@@ -77,7 +82,9 @@ public class UserService {
             user.setRoles(resolveRoles(request.roles()));
         }
         user.setUpdatedBy(currentUserId());
-        return userMapper.toResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        auditService.log(currentUsername(), "USER_UPDATED", "USER", saved.getId());
+        return userMapper.toResponse(saved);
     }
 
     @Transactional
@@ -87,6 +94,8 @@ public class UserService {
             throw ApiException.business("Tidak dapat menghapus akun sendiri");
         }
         userRepository.delete(user);
+        auditService.log(currentUsername(), "USER_DELETED", "USER", id,
+                java.util.Map.of("username", user.getUsername()), null);
     }
 
     // ---------- helpers ----------
@@ -111,6 +120,14 @@ public class UserService {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof UserPrincipal p) {
             return p.getId();
+        }
+        return null;
+    }
+
+    private String currentUsername() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserPrincipal p) {
+            return p.getUsername();
         }
         return null;
     }

@@ -1,6 +1,8 @@
 package com.tugaskuliah.pos.user.service;
 
 import com.tugaskuliah.pos.common.exception.ApiException;
+import com.tugaskuliah.pos.common.security.UserPrincipal;
+import com.tugaskuliah.pos.control.service.AuditService;
 import com.tugaskuliah.pos.user.dto.CreateRoleRequest;
 import com.tugaskuliah.pos.user.dto.RoleResponse;
 import com.tugaskuliah.pos.user.entity.Permission;
@@ -9,6 +11,7 @@ import com.tugaskuliah.pos.user.mapper.RoleMapper;
 import com.tugaskuliah.pos.user.repository.PermissionRepository;
 import com.tugaskuliah.pos.user.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +27,7 @@ public class RoleService {
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
     private final RoleMapper roleMapper;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public List<RoleResponse> list() {
@@ -46,14 +50,20 @@ public class RoleService {
         role.setDescription(request.description());
         role.setSystem(false);
         role.setPermissions(resolvePermissions(request.permissions()));
-        return roleMapper.toResponse(roleRepository.save(role));
+        Role saved = roleRepository.save(role);
+        auditService.log(currentUsername(), "ROLE_CREATED", "ROLE", saved.getId(),
+                null, java.util.Map.of("name", saved.getName()));
+        return roleMapper.toResponse(saved);
     }
 
     @Transactional
     public RoleResponse assignPermissions(Long id, Set<String> codes) {
         Role role = findById(id);
         role.setPermissions(resolvePermissions(codes));
-        return roleMapper.toResponse(roleRepository.save(role));
+        Role saved = roleRepository.save(role);
+        auditService.log(currentUsername(), "ROLE_PERMISSIONS_UPDATED", "ROLE", saved.getId(),
+                null, java.util.Map.of("name", saved.getName(), "permissions", codes));
+        return roleMapper.toResponse(saved);
     }
 
     @Transactional
@@ -63,6 +73,8 @@ public class RoleService {
             throw ApiException.business("Role sistem tidak dapat dihapus");
         }
         roleRepository.delete(role);
+        auditService.log(currentUsername(), "ROLE_DELETED", "ROLE", id,
+                java.util.Map.of("name", role.getName()), null);
     }
 
     private Role findById(Long id) {
@@ -79,5 +91,13 @@ public class RoleService {
             throw ApiException.notFound("Permission");
         }
         return perms;
+    }
+
+    private String currentUsername() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserPrincipal p) {
+            return p.getUsername();
+        }
+        return null;
     }
 }

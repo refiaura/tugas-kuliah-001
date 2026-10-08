@@ -19,7 +19,7 @@ auth → business rule → audit → test → frontend → states → integrasi 
 - [x] `@PreAuthorize` permission checks; user aktif/nonaktif
 - [x] Test: 19/19 lolos (login valid/invalid, refresh rotation+reuse, logout, RBAC 403, inactive user)
 - [x] Mobile: login screen, authStore, token refresh interceptor, menu by permission
-- [ ] Audit log login/logout & perubahan user/role → Milestone 7
+- [x] Audit log login/logout & perubahan user/role → Milestone 7 ✅ (M7: USER_LOGIN/LOGOUT, USER_CREATED/UPDATED/DELETED, ROLE_CREATED/PERMISSIONS_UPDATED/DELETED di audit_logs append-only)
 
 ## MILESTONE 2 — Master Data ✅ (2026-10-08, lihat `MILESTONE_2_REPORT.md`)
 
@@ -29,7 +29,7 @@ auth → business rule → audit → test → frontend → states → integrasi 
 - [x] CRUD + pagination/search/filter + validation; price change tercatat di product_prices
 - [x] Test: 5/5 lolos (SKU duplikat ditolak, histori harga, RBAC kasir 403, search)
 - [x] Mobile: daftar produk + search, form produk (tsc lolos)
-- [ ] Audit log PRICE_CHANGE formal → Milestone 7
+- [x] Audit log PRICE_CHANGE formal → Milestone 7 ✅ (M7: audit PRICE_CHANGE di ProductService.updatePrice, hanya saat harga berubah)
 
 ## MILESTONE 3 — POS / Sales ✅ (2026-10-08, lihat `MILESTONE_3_REPORT.md`)
 
@@ -48,7 +48,7 @@ auth → business rule → audit → test → frontend → states → integrasi 
 - [x] Checkout validasi shift aktif (SaleService.requireOpenShift)
 - [x] Test: 4 shift test + 1 checkout-tanpa-shift test ditulis (belum dijalankan — env)
 - [x] Mobile: open shift, current shift, cash movement, close shift + reconcile
-- [ ] Approval flow variance → Milestone 7
+- [x] Approval flow variance → Milestone 7 ✅ (M7: |variance| > 50rb otomatis buat approval SHIFT_VARIANCE via event; shift tetap tertutup)
 
 ## MILESTONE 5 — Inventory
 
@@ -65,12 +65,12 @@ auth → business rule → audit → test → frontend → states → integrasi 
 - [x] Test: PO approve flow, partial receipt, return stock out (PurchaseIntegrationTest, 8 test)
 - [x] Mobile: PO list/form, goods receipt, purchase return
 
-## MILESTONE 7 — Control
+## MILESTONE 7 — Control ✅ (2026-10-08, lihat `MILESTONE_7_REPORT.md`)
 
-- [ ] Void (request→reason→approval→VOIDED); return/refund (SELLABLE/DAMAGED)
-- [ ] `approvals` workflow; `audit_logs` append-only (tanpa endpoint mutasi)
-- [ ] Test: void butuh approval, kasir tidak bisa approve sendiri, audit tercatat
-- [ ] Mobile: transaction history/detail, void, return/refund, approval inbox, audit log
+- [x] Void (request→reason→approval→VOIDED); return/refund (SELLABLE/DAMAGED)
+- [x] `approvals` workflow; `audit_logs` append-only (tanpa endpoint mutasi)
+- [x] Test: void butuh approval, kasir tidak bisa approve sendiri, audit tercatat
+- [x] Mobile: transaction history/detail, void, return/refund, approval inbox, audit log
 
 ## MILESTONE 8 — Dashboard / Reports / Notification
 

@@ -34,6 +34,7 @@ export interface HoldRequest {
 }
 
 export interface SaleItemResponse {
+  id: number;
   productId: number;
   sku: string;
   name: string;
@@ -135,6 +136,38 @@ export async function resumeSale(
     return unwrap(res, 'Gagal melanjutkan transaksi');
   } catch (e) {
     throw new Error(getApiErrorMessage(e, 'Gagal melanjutkan transaksi'));
+  }
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  pagination: PageInfo | null;
+}
+
+export async function listSales(
+  status?: string,
+  page = 0,
+  size = 20,
+): Promise<PagedResult<SaleResponse>> {
+  try {
+    const res = await api.get<ApiResponse<SaleResponse[]>>('/sales', {
+      params: { status: status || undefined, page, size },
+    });
+    return {
+      items: unwrap(res, 'Gagal memuat transaksi'),
+      pagination: res.data.pagination ?? null,
+    };
+  } catch (e) {
+    throw new Error(getApiErrorMessage(e, 'Gagal memuat transaksi'));
+  }
+}
+
+export async function getSale(id: number): Promise<SaleResponse> {
+  try {
+    const res = await api.get<ApiResponse<SaleResponse>>(`/sales/${id}`);
+    return unwrap(res, 'Gagal memuat detail transaksi');
+  } catch (e) {
+    throw new Error(getApiErrorMessage(e, 'Gagal memuat detail transaksi'));
   }
 }
 

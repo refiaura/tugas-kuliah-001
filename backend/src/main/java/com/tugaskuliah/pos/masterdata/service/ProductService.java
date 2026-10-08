@@ -3,6 +3,7 @@ package com.tugaskuliah.pos.masterdata.service;
 import com.tugaskuliah.pos.common.exception.ApiException;
 import com.tugaskuliah.pos.common.exception.ErrorCode;
 import com.tugaskuliah.pos.common.security.UserPrincipal;
+import com.tugaskuliah.pos.control.service.AuditService;
 import com.tugaskuliah.pos.masterdata.dto.*;
 import com.tugaskuliah.pos.masterdata.entity.*;
 import com.tugaskuliah.pos.masterdata.repository.*;
@@ -28,6 +29,7 @@ public class ProductService {
     private final ProductPriceRepository priceRepository;
     private final CategoryRepository categoryRepository;
     private final UnitRepository unitRepository;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public Page<ProductResponse> search(String search, Long categoryId, boolean activeOnly, Pageable pageable) {
@@ -100,19 +102,34 @@ public class ProductService {
     public ProductResponse updatePrice(Long id, UpdatePriceRequest req) {
         Product p = findById(id);
         String by = currentUsername();
+        java.math.BigDecimal oldPurchase = p.getPurchasePrice();
+        java.math.BigDecimal oldSelling = p.getSellingPrice();
+        boolean changed = false;
         if (req.purchasePrice() != null && req.purchasePrice().compareTo(p.getPurchasePrice()) != 0) {
             recordPrice(p, null, ProductPrice.PriceType.PURCHASE,
                     p.getPurchasePrice(), req.purchasePrice(), req.reason(), by);
             p.setPurchasePrice(req.purchasePrice());
+            changed = true;
         }
         if (req.sellingPrice().compareTo(p.getSellingPrice()) != 0) {
             recordPrice(p, null, ProductPrice.PriceType.SELLING,
                     p.getSellingPrice(), req.sellingPrice(), req.reason(), by);
             p.setSellingPrice(req.sellingPrice());
+            changed = true;
         }
         p.setUpdatedAt(OffsetDateTime.now());
         p.setUpdatedBy(by);
-        return toResponse(productRepository.save(p));
+        ProductResponse resp = toResponse(productRepository.save(p));
+        if (changed) {
+            // formal audit trail (deferred M2 item): who changed which price
+            auditService.log(by, "PRICE_CHANGE", "PRODUCT", p.getId(),
+                    java.util.Map.of("purchasePrice", String.valueOf(oldPurchase),
+                            "sellingPrice", String.valueOf(oldSelling)),
+                    java.util.Map.of("purchasePrice", String.valueOf(p.getPurchasePrice()),
+                            "sellingPrice", String.valueOf(p.getSellingPrice()),
+                            "reason", req.reason() != null ? req.reason() : ""));
+        }
+        return resp;
     }
 
     @Transactional(readOnly = true)

@@ -42,6 +42,12 @@ import PurchaseOrderFormScreen from '../modules/purchase/PurchaseOrderFormScreen
 import PurchaseOrderDetailScreen from '../modules/purchase/PurchaseOrderDetailScreen';
 import GoodsReceiptScreen from '../modules/purchase/GoodsReceiptScreen';
 import PurchaseReturnScreen from '../modules/purchase/PurchaseReturnScreen';
+import ControlScreen from '../modules/control/ControlScreen';
+import TransactionHistoryScreen from '../modules/control/TransactionHistoryScreen';
+import TransactionDetailScreen from '../modules/control/TransactionDetailScreen';
+import ReturnRequestScreen from '../modules/control/ReturnRequestScreen';
+import ApprovalInboxScreen from '../modules/control/ApprovalInboxScreen';
+import AuditLogScreen from '../modules/control/AuditLogScreen';
 import { SaleResponse } from '../services/saleApi';
 
 /* ---------------------------------- types --------------------------------- */
@@ -70,6 +76,12 @@ export type AppStackParamList = {
   PurchaseOrderDetail: { poId: number };
   GoodsReceipt: { poId?: number };
   PurchaseReturn: { poId?: number };
+  Control: undefined;
+  TransactionHistory: undefined;
+  TransactionDetail: { saleId: number };
+  ReturnRequest: { saleId: number };
+  ApprovalInbox: undefined;
+  AuditLog: undefined;
   ModulePlaceholder: { title: string };
 };
 
@@ -93,7 +105,8 @@ interface MenuItem {
     | 'Pos'
     | 'Shift'
     | 'Stock'
-    | 'Purchase';
+    | 'Purchase'
+    | 'Control';
 }
 
 const MENU_ITEMS: MenuItem[] = [
@@ -115,6 +128,12 @@ const MENU_ITEMS: MenuItem[] = [
     title: 'Pembelian',
     permission: 'purchase.view',
     route: 'Purchase',
+  },
+  {
+    key: 'control',
+    title: 'Kontrol',
+    permission: 'sales.view',
+    route: 'Control',
   },
   {
     key: 'products',
@@ -332,6 +351,36 @@ function AppNavigator() {
         name="PurchaseReturn"
         component={PurchaseReturnScreen}
         options={{ title: 'Retur Pembelian' }}
+      />
+      <AppStack.Screen
+        name="Control"
+        component={ControlScreen}
+        options={{ title: 'Kontrol' }}
+      />
+      <AppStack.Screen
+        name="TransactionHistory"
+        component={TransactionHistoryScreen}
+        options={{ title: 'Riwayat Transaksi' }}
+      />
+      <AppStack.Screen
+        name="TransactionDetail"
+        component={TransactionDetailScreen}
+        options={{ title: 'Detail Transaksi' }}
+      />
+      <AppStack.Screen
+        name="ReturnRequest"
+        component={ReturnRequestScreen}
+        options={{ title: 'Retur Penjualan' }}
+      />
+      <AppStack.Screen
+        name="ApprovalInbox"
+        component={ApprovalInboxScreen}
+        options={{ title: 'Approval Inbox' }}
+      />
+      <AppStack.Screen
+        name="AuditLog"
+        component={AuditLogScreen}
+        options={{ title: 'Audit Log' }}
       />
       <AppStack.Screen
         name="ModulePlaceholder"

@@ -307,7 +307,7 @@ public class SaleService {
                 s.getGrandTotal(), s.getPaidTotal(), s.getChangeAmount(),
                 s.getNotes(), s.getCompletedAt(),
                 s.getItems().stream().map(i -> new SaleItemResponse(
-                        i.getProduct().getId(), i.getSku(), i.getName(),
+                        i.getId(), i.getProduct().getId(), i.getSku(), i.getName(),
                         i.getQty(), i.getUnitPrice(), i.getDiscount(), i.getSubtotal())).toList(),
                 s.getPayments().stream().map(p -> new SalePaymentResponse(
                         p.getPaymentMethod().getCode(), p.getPaymentMethod().getName(),

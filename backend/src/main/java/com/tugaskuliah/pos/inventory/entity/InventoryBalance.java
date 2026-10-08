@@ -28,6 +28,9 @@ public class InventoryBalance {
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal qty = BigDecimal.ZERO;
 
+    @Column(name = "damaged_qty", nullable = false, precision = 19, scale = 2)
+    private BigDecimal damagedQty = BigDecimal.ZERO;
+
     @Version
     private Long version; // optimistic locking for concurrent checkout
 

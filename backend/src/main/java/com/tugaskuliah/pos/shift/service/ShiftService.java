@@ -1,5 +1,6 @@
 package com.tugaskuliah.pos.shift.service;
 
+import com.tugaskuliah.pos.control.event.ShiftVarianceEvent;
 import com.tugaskuliah.pos.common.exception.ApiException;
 import com.tugaskuliah.pos.common.exception.ErrorCode;
 import com.tugaskuliah.pos.common.security.UserPrincipal;
@@ -12,6 +13,7 @@ import com.tugaskuliah.pos.shift.repository.CashierShiftRepository;
 import com.tugaskuliah.pos.user.entity.User;
 import com.tugaskuliah.pos.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,7 @@ public class ShiftService {
     private final CashMovementRepository movementRepository;
     private final SaleRepository saleRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public Optional<ShiftResponse> currentShift() {
@@ -79,8 +82,11 @@ public class ShiftService {
         BigDecimal cashSales = saleRepository.sumCashPaymentsByShift(shiftId);
         BigDecimal cashIn = movementRepository.sumByShiftAndType(shiftId, CashMovement.Type.IN);
         BigDecimal cashOut = movementRepository.sumByShiftAndType(shiftId, CashMovement.Type.OUT);
-        BigDecimal expected = s.getOpeningCash().add(cashSales).add(cashIn).subtract(cashOut);
-        return new ShiftSummaryResponse(toResponse(s), cashSales, cashIn, cashOut, expected);
+        // REFUND is a cash outflow too (PRD §11.3 "Cash Refund" line): fold into cashOut
+        BigDecimal cashRefund = movementRepository.sumByShiftAndType(shiftId, CashMovement.Type.REFUND);
+        BigDecimal totalOut = cashOut.add(cashRefund);
+        BigDecimal expected = s.getOpeningCash().add(cashSales).add(cashIn).subtract(totalOut);
+        return new ShiftSummaryResponse(toResponse(s), cashSales, cashIn, totalOut, expected);
     }
 
     @Transactional
@@ -101,8 +107,10 @@ public class ShiftService {
         CashierShift saved = shiftRepository.save(shift);
 
         if (variance.abs().compareTo(VARIANCE_THRESHOLD) > 0) {
-            // flagged for manager review; approval flow in Milestone 7
-            // (variance_approved_by stays null until approved)
+            // Milestone 7: raise a SHIFT_VARIANCE approval for supervisor review.
+            // The shift stays closed; it is never blocked.
+            eventPublisher.publishEvent(new ShiftVarianceEvent(
+                    saved.getId(), currentUsername(), expected, req.actualCash(), variance));
         }
         return toResponse(saved);
     }

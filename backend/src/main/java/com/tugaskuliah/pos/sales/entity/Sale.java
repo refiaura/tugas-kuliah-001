@@ -20,7 +20,7 @@ import java.util.List;
 @NoArgsConstructor
 public class Sale {
 
-    public enum Status { DRAFT, HELD, COMPLETED, CANCELLED }
+    public enum Status { DRAFT, HELD, COMPLETED, CANCELLED, VOIDED }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -71,6 +71,15 @@ public class Sale {
 
     @Column(name = "completed_at")
     private OffsetDateTime completedAt;
+
+    @Column(name = "voided_at")
+    private OffsetDateTime voidedAt;
+
+    @Column(name = "voided_by", length = 50)
+    private String voidedBy;
+
+    @Column(name = "void_reason", columnDefinition = "TEXT")
+    private String voidReason;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();

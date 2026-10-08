@@ -15,7 +15,7 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 public class CashMovement {
 
-    public enum Type { IN, OUT }
+    public enum Type { IN, OUT, REFUND }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
