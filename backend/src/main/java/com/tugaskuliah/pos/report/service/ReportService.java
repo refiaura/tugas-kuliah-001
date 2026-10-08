@@ -42,7 +42,9 @@ public class ReportService {
     public Page<SalesReportRow> sales(Sale.Status status, LocalDate startDate, LocalDate endDate,
                                      Long cashierId, Long customerId, Long paymentMethodId,
                                      Pageable pageable) {
-        return saleReportRepository.findSalesReport(status,
+        // Default to COMPLETED (final transactions) when no status filter given.
+        Sale.Status effectiveStatus = status == null ? Sale.Status.COMPLETED : status;
+        return saleReportRepository.findSalesReport(effectiveStatus,
                 toStart(startDate), toEndExclusive(endDate),
                 cashierId, customerId, paymentMethodId, pageable);
     }
@@ -80,8 +82,10 @@ public class ReportService {
                 ? OffsetDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
                 : toStart(startDate);
         OffsetDateTime end = endDate == null ? OffsetDateTime.now() : toEndExclusive(endDate);
-        Object[] kpi = saleReportRepository.salesKpi(start, end);
-        BigDecimal grossSales = kpi[0] == null ? BigDecimal.ZERO : (BigDecimal) kpi[0];
+        BigDecimal grossSales = saleReportRepository.salesRevenue(start, end);
+        if (grossSales == null) {
+            grossSales = BigDecimal.ZERO;
+        }
         BigDecimal returns = saleReportRepository.returnsTotal(start, end);
         BigDecimal netSales = grossSales.subtract(returns == null ? BigDecimal.ZERO : returns);
         BigDecimal cogs = saleReportRepository.cogs(start, end);

@@ -60,7 +60,7 @@ public interface SaleReportRepository extends JpaRepository<Sale, Long> {
 
     /** Total refunded via completed sale returns in [start, end). */
     @Query("""
-            SELECT COALESCE(SUM(r.refundAmount), 0) FROM SaleReturn r
+            SELECT SUM(r.refundAmount) FROM SaleReturn r
             WHERE r.status = 'COMPLETED'
               AND r.createdAt >= :start AND r.createdAt < :end
             """)
@@ -79,7 +79,7 @@ public interface SaleReportRepository extends JpaRepository<Sale, Long> {
             FROM Sale s
             LEFT JOIN s.cashier cashier
             LEFT JOIN s.customer cust
-            WHERE (s.status = :status OR (:status IS NULL AND s.status = 'COMPLETED'))
+            WHERE s.status = :status
               AND (:start IS NULL OR s.completedAt >= :start)
               AND (:end IS NULL OR s.completedAt < :end)
               AND (:cashierId IS NULL OR cashier.id = :cashierId)
@@ -101,17 +101,17 @@ public interface SaleReportRepository extends JpaRepository<Sale, Long> {
     @Query(value = """
             SELECT new com.tugaskuliah.pos.report.dto.ProductReportRow(
                 p.name, p.sku,
-                COALESCE(SUM(i.qty), 0),
-                COALESCE(SUM(i.subtotal), 0),
-                COALESCE(SUM(i.discount), 0),
-                COALESCE(SUM(i.returnedQty), 0),
-                COALESCE(SUM(i.subtotal - (i.returnedQty * i.unitPrice)), 0))
+                SUM(i.qty),
+                SUM(i.subtotal),
+                SUM(i.discount),
+                SUM(i.returnedQty),
+                SUM(i.subtotal - (i.returnedQty * i.unitPrice)))
             FROM SaleItem i JOIN i.product p
             WHERE i.sale.status = 'COMPLETED'
               AND (:start IS NULL OR i.sale.completedAt >= :start)
               AND (:end IS NULL OR i.sale.completedAt < :end)
             GROUP BY p.id, p.name, p.sku
-            ORDER BY COALESCE(SUM(i.subtotal), 0) DESC
+            ORDER BY SUM(i.subtotal) DESC
             """,
             countQuery = """
             SELECT COUNT(DISTINCT p.id) FROM SaleItem i JOIN i.product p
