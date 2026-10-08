@@ -20,14 +20,14 @@ public interface SaleReportRepository extends JpaRepository<Sale, Long> {
 
     /** {revenue, txCount} for completed sales in [start, end). */
     @Query("""
-            SELECT COALESCE(SUM(s.grandTotal), 0), COUNT(s) FROM Sale s
+            SELECT SUM(s.grandTotal), COUNT(s) FROM Sale s
             WHERE s.status = 'COMPLETED'
               AND s.completedAt >= :start AND s.completedAt < :end
             """)
     Object[] salesKpi(@Param("start") OffsetDateTime start, @Param("end") OffsetDateTime end);
 
     @Query("""
-            SELECT COALESCE(SUM(i.qty), 0) FROM SaleItem i
+            SELECT SUM(i.qty) FROM SaleItem i
             WHERE i.sale.status = 'COMPLETED'
               AND i.sale.completedAt >= :start AND i.sale.completedAt < :end
             """)
@@ -35,7 +35,7 @@ public interface SaleReportRepository extends JpaRepository<Sale, Long> {
 
     /** COGS = sum of (net qty * product cost). Cost comes from master data (purchasePrice). */
     @Query("""
-            SELECT COALESCE(SUM((i.qty - i.returnedQty) * p.purchasePrice), 0)
+            SELECT SUM((i.qty - i.returnedQty) * p.purchasePrice)
             FROM SaleItem i JOIN i.product p
             WHERE i.sale.status = 'COMPLETED'
               AND i.sale.completedAt >= :start AND i.sale.completedAt < :end

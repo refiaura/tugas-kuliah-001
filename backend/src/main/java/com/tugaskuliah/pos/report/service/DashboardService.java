@@ -54,8 +54,8 @@ public class DashboardService {
     }
     private DashboardResponse.SalesKpi salesKpi(OffsetDateTime start, OffsetDateTime end) {
         Object[] row = saleReportRepository.salesKpi(start, end);
-        BigDecimal revenue = nvl((BigDecimal) row[0]);
-        long txCount = (Long) row[1];
+        BigDecimal revenue = nvl(row[0]);
+        long txCount = row[1] instanceof Number n ? n.longValue() : 0L;
         BigDecimal itemsSold = nvl(saleReportRepository.itemsSold(start, end));
         BigDecimal avg = txCount == 0 ? BigDecimal.ZERO
                 : revenue.divide(BigDecimal.valueOf(txCount), 2, RoundingMode.HALF_UP);
@@ -130,7 +130,16 @@ public class DashboardService {
         return alerts;
     }
 
-    private static BigDecimal nvl(BigDecimal v) {
-        return v == null ? BigDecimal.ZERO : v;
+    private static BigDecimal nvl(Object v) {
+        if (v == null) {
+            return BigDecimal.ZERO;
+        }
+        if (v instanceof BigDecimal bd) {
+            return bd;
+        }
+        if (v instanceof Number n) {
+            return BigDecimal.valueOf(n.doubleValue());
+        }
+        return BigDecimal.ZERO;
     }
 }
